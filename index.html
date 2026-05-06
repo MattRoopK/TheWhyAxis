@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>The Why Axis</title>
+<script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #1a1a2e;
+    color: #eaeaea;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+  }
+  h1 {
+    font-size: 32px;
+    margin-bottom: 32px;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+  .screen {
+    width: 100%;
+    max-width: 480px;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .screen.active { display: flex; }
+  input {
+    width: 100%;
+    padding: 22px;
+    font-size: 24px;
+    border: 2px solid #333;
+    border-radius: 14px;
+    background: #2a2a40;
+    color: #fff;
+    text-align: center;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  input::placeholder { color: #888; }
+  #room-input {
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    font-weight: bold;
+  }
+  button {
+    width: 100%;
+    padding: 22px;
+    font-size: 24px;
+    font-weight: bold;
+    border: 0;
+    border-radius: 14px;
+    background: #4361ee;
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.05s, background 0.1s;
+  }
+  button:active { transform: scale(0.98); }
+  button:disabled { background: #555; cursor: not-allowed; }
+  .buzz-btn {
+    width: min(80vw, 80vh, 420px);
+    height: min(80vw, 80vh, 420px);
+    border-radius: 50%;
+    font-size: 56px;
+    background: #e63946;
+    align-self: center;
+    box-shadow: 0 12px 0 #8b1a25, 0 16px 30px rgba(0,0,0,0.4);
+  }
+  .buzz-btn:active {
+    background: #ff6b78;
+    transform: translateY(8px);
+    box-shadow: 0 4px 0 #8b1a25, 0 8px 15px rgba(0,0,0,0.4);
+  }
+  .info {
+    text-align: center;
+    font-size: 18px;
+    color: #aaa;
+    margin-bottom: 16px;
+  }
+  .status {
+    text-align: center;
+    font-size: 16px;
+    color: #888;
+    margin-top: 16px;
+    min-height: 22px;
+  }
+  .status.error { color: #ff6b6b; }
+  .status.success { color: #6bff9e; }
+</style>
+</head>
+<body>
+
+<div id="join-screen" class="screen active">
+  <h1>The Why Axis</h1>
+  <input id="room-input" type="text" placeholder="ROOM" maxlength="4" autocapitalize="characters" autocomplete="off" inputmode="text" spellcheck="false">
+  <input id="name-input" type="text" placeholder="Your name" maxlength="20" autocomplete="off" spellcheck="false">
+  <button id="join-btn">Join</button>
+  <div class="status" id="status"></div>
+</div>
+
+<div id="play-screen" class="screen">
+  <h1>Hi <span id="player-name"></span>!</h1>
+  <div class="info">Room: <span id="room-display"></span></div>
+  <button class="buzz-btn" id="buzz-btn">BUZZ IN</button>
+  <div class="status" id="play-status"></div>
+</div>
+
+<script>
+const ABLY_KEY = "YOUR_ABLY_API_KEY";
+
+const joinScreen = document.getElementById('join-screen');
+const playScreen = document.getElementById('play-screen');
+const roomInput = document.getElementById('room-input');
+const nameInput = document.getElementById('name-input');
+const joinBtn = document.getElementById('join-btn');
+const buzzBtn = document.getElementById('buzz-btn');
+const playerNameSpan = document.getElementById('player-name');
+const roomDisplay = document.getElementById('room-display');
+const statusEl = document.getElementById('status');
+const playStatusEl = document.getElementById('play-status');
+
+let ably = null;
+let channel = null;
+let roomCode = '';
+let playerName = '';
+let confirmTimer = null;
+let confirmed = false;
+
+function setStatus(text, kind) {
+  statusEl.textContent = text;
+  statusEl.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function setPlayStatus(text, kind) {
+  playStatusEl.textContent = text;
+  playStatusEl.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function handleMessage(msg) {
+  let data;
+  try {
+    data = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data;
+  } catch (e) {
+    return;
+  }
+  if (!data || typeof data !== 'object') return;
+
+  if (data.type === 'room_confirmed' && data.for === playerName) {
+    confirmed = true;
+    if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
+    playerNameSpan.textContent = playerName;
+    roomDisplay.textContent = roomCode;
+    joinScreen.classList.remove('active');
+    playScreen.classList.add('active');
+  }
+}
+
+joinBtn.addEventListener('click', async () => {
+  const code = roomInput.value.trim().toUpperCase();
+  const name = nameInput.value.trim();
+  if (code.length !== 4 || !/^[A-Z]{4}$/.test(code)) {
+    setStatus('Enter a 4-letter room code', 'error');
+    return;
+  }
+  if (!name) {
+    setStatus('Enter your name', 'error');
+    return;
+  }
+
+  joinBtn.disabled = true;
+  setStatus('Connecting...');
+  roomCode = code;
+  playerName = name;
+
+  try {
+    if (!ably) {
+      ably = new Ably.Realtime(ABLY_KEY);
+    }
+    await new Promise((resolve, reject) => {
+      if (ably.connection.state === 'connected') return resolve();
+      ably.connection.once('connected', resolve);
+      ably.connection.once('failed', reject);
+    });
+
+    channel = ably.channels.get('game-' + roomCode);
+    channel.subscribe('msg', handleMessage);
+
+    setStatus('Joining room ' + roomCode + '...');
+    confirmed = false;
+    confirmTimer = setTimeout(() => {
+      if (!confirmed) {
+        setStatus('No response from TV — check the room code', 'error');
+        joinBtn.disabled = false;
+      }
+    }, 5000);
+
+    await channel.publish('msg', JSON.stringify({
+      type: 'player_joined',
+      name: playerName
+    }));
+  } catch (err) {
+    setStatus('Error: ' + (err && err.message ? err.message : err), 'error');
+    joinBtn.disabled = false;
+  }
+});
+
+buzzBtn.addEventListener('click', async () => {
+  if (!channel) return;
+  try {
+    await channel.publish('msg', JSON.stringify({
+      type: 'buzz_in',
+      name: playerName
+    }));
+    setPlayStatus('Buzzed!', 'success');
+    setTimeout(() => setPlayStatus(''), 1500);
+  } catch (err) {
+    setPlayStatus('Failed to send buzz', 'error');
+  }
+});
+</script>
+</body>
+</html>
