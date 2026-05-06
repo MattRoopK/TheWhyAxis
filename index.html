@@ -29,14 +29,21 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+    justify-content: flex-start;
+    padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
   }
   h1 {
-    font-size: 32px;
-    margin-bottom: 32px;
+    font-size: 28px;
+    margin: 16px 0 12px;
     text-align: center;
     letter-spacing: 1px;
+  }
+  h2 {
+    font-size: 20px;
+    margin: 8px 0;
+    text-align: center;
+    color: #cdd;
+    font-weight: 500;
   }
   .screen {
     width: 100%;
@@ -44,9 +51,12 @@
     display: none;
     flex-direction: column;
     align-items: stretch;
-    gap: 16px;
+    gap: 12px;
+    flex: 1;
+    overflow: hidden;
   }
   .screen.active { display: flex; }
+  .center-screen { justify-content: center; align-items: stretch; }
   input {
     width: 100%;
     padding: 22px;
@@ -67,8 +77,8 @@
   }
   button {
     width: 100%;
-    padding: 22px;
-    font-size: 24px;
+    padding: 18px;
+    font-size: 22px;
     font-weight: bold;
     border: 0;
     border-radius: 14px;
@@ -79,40 +89,71 @@
   }
   button:active { transform: scale(0.98); }
   button:disabled { background: #555; cursor: not-allowed; }
-  .buzz-btn {
-    width: min(80vw, 80vh, 420px);
-    height: min(80vw, 80vh, 420px);
-    border-radius: 50%;
-    font-size: 56px;
-    background: #e63946;
-    align-self: center;
-    box-shadow: 0 12px 0 #8b1a25, 0 16px 30px rgba(0,0,0,0.4);
-  }
-  .buzz-btn:active {
-    background: #ff6b78;
-    transform: translateY(8px);
-    box-shadow: 0 4px 0 #8b1a25, 0 8px 15px rgba(0,0,0,0.4);
-  }
-  .info {
-    text-align: center;
-    font-size: 18px;
-    color: #aaa;
-    margin-bottom: 16px;
-  }
+  .danger { background: #e63946; }
+  .danger:active { background: #ff6b78; }
   .status {
     text-align: center;
     font-size: 16px;
     color: #888;
-    margin-top: 16px;
     min-height: 22px;
   }
   .status.error { color: #ff6b6b; }
   .status.success { color: #6bff9e; }
+  .timer {
+    font-size: 48px;
+    font-weight: bold;
+    text-align: center;
+    color: #fff;
+  }
+  .timer.urgent { color: #ff6b6b; }
+  canvas {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #0c0c1a;
+    border: 2px solid #5c5c8a;
+    border-radius: 12px;
+    touch-action: none;
+    display: block;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .pill {
+    background: #2a2a40;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+    color: #cdd;
+  }
+  .scores {
+    width: 100%;
+    background: #20203a;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 16px;
+  }
+  .scores .row {
+    padding: 4px 0;
+    border-bottom: 1px solid #2f2f4a;
+  }
+  .scores .row:last-child { border-bottom: 0; }
+  .label-strong { color: #fff; font-weight: bold; }
+  .small { font-size: 14px; color: #888; }
+  .big-number {
+    font-size: 64px;
+    font-weight: bold;
+    color: #4cd2a0;
+    text-align: center;
+  }
+  .crown { color: #f4c430; }
 </style>
 </head>
 <body>
 
-<div id="join-screen" class="screen active">
+<div id="join-screen" class="screen center-screen active">
   <h1>The Why Axis</h1>
   <input id="room-input" type="text" placeholder="ROOM" maxlength="4" autocapitalize="characters" autocomplete="off" inputmode="text" spellcheck="false">
   <input id="name-input" type="text" placeholder="Your name" maxlength="20" autocomplete="off" spellcheck="false">
@@ -120,63 +161,403 @@
   <div class="status" id="status"></div>
 </div>
 
-<div id="play-screen" class="screen">
-  <h1>Hi <span id="player-name"></span>!</h1>
-  <div class="info">Room: <span id="room-display"></span></div>
-  <button class="buzz-btn" id="buzz-btn">BUZZ IN</button>
-  <div class="status" id="play-status"></div>
+<div id="lobby-screen" class="screen center-screen">
+  <h1>Hi <span id="lobby-name"></span>!</h1>
+  <div class="status">Room: <span id="lobby-room"></span></div>
+  <h2 id="lobby-msg">Waiting for the host to start the game...</h2>
+  <button id="start-btn" style="display:none;">Start Game</button>
+</div>
+
+<div id="clue-screen" class="screen">
+  <div class="row">
+    <span class="pill">You're the clue giver</span>
+    <div class="timer" id="clue-timer">20</div>
+  </div>
+  <h2>Give a verbal clue for this point:</h2>
+  <canvas id="clue-canvas"></canvas>
+  <div class="small" id="clue-axis-hint"></div>
+  <button id="clue-given-btn" class="danger">CLUE GIVEN</button>
+</div>
+
+<div id="watch-screen" class="screen">
+  <div class="row">
+    <span class="pill">Guessing in progress</span>
+    <div class="timer" id="watch-timer">20</div>
+  </div>
+  <h2>Watch the TV to see guesses come in.</h2>
+  <canvas id="watch-canvas"></canvas>
+  <div class="small">Your target stays visible — don't give extra hints!</div>
+</div>
+
+<div id="guess-screen" class="screen">
+  <div class="row">
+    <span class="pill">Drag your pin</span>
+    <div class="timer" id="guess-timer">20</div>
+  </div>
+  <h2 id="guess-clue-giver">…is giving you a clue</h2>
+  <canvas id="guess-canvas"></canvas>
+  <div class="small" id="guess-axis-hint"></div>
+</div>
+
+<div id="results-screen" class="screen center-screen">
+  <h2 id="results-headline">Round results</h2>
+  <div class="big-number" id="results-points">+0</div>
+  <div class="status" id="results-detail">points this round</div>
+  <div class="scores" id="results-scores"></div>
+  <div class="status">Next round starting…</div>
+</div>
+
+<div id="gameover-screen" class="screen center-screen">
+  <h1>Game Over!</h1>
+  <h2 id="gameover-winner"></h2>
+  <div class="scores" id="gameover-scores"></div>
 </div>
 
 <script>
 const ABLY_KEY = "I9x_TQ.XW3Uyw:gMx6lM_kYxHcVb6Wq_EQBy1f4UYxZB3J5Ip46oswjSM";
 
-const joinScreen = document.getElementById('join-screen');
-const playScreen = document.getElementById('play-screen');
+// ── DOM refs ────────────────────────────────────────────────────────────
+const screens = {
+  join: document.getElementById('join-screen'),
+  lobby: document.getElementById('lobby-screen'),
+  clue: document.getElementById('clue-screen'),
+  watch: document.getElementById('watch-screen'),
+  guess: document.getElementById('guess-screen'),
+  results: document.getElementById('results-screen'),
+  gameover: document.getElementById('gameover-screen'),
+};
 const roomInput = document.getElementById('room-input');
 const nameInput = document.getElementById('name-input');
 const joinBtn = document.getElementById('join-btn');
-const buzzBtn = document.getElementById('buzz-btn');
-const playerNameSpan = document.getElementById('player-name');
-const roomDisplay = document.getElementById('room-display');
 const statusEl = document.getElementById('status');
-const playStatusEl = document.getElementById('play-status');
+const lobbyName = document.getElementById('lobby-name');
+const lobbyRoom = document.getElementById('lobby-room');
+const lobbyMsg = document.getElementById('lobby-msg');
+const startBtn = document.getElementById('start-btn');
+const clueCanvas = document.getElementById('clue-canvas');
+const watchCanvas = document.getElementById('watch-canvas');
+const guessCanvas = document.getElementById('guess-canvas');
+const clueTimer = document.getElementById('clue-timer');
+const watchTimer = document.getElementById('watch-timer');
+const guessTimer = document.getElementById('guess-timer');
+const clueGivenBtn = document.getElementById('clue-given-btn');
+const clueAxisHint = document.getElementById('clue-axis-hint');
+const guessAxisHint = document.getElementById('guess-axis-hint');
+const guessClueGiver = document.getElementById('guess-clue-giver');
+const resultsHeadline = document.getElementById('results-headline');
+const resultsPoints = document.getElementById('results-points');
+const resultsDetail = document.getElementById('results-detail');
+const resultsScores = document.getElementById('results-scores');
+const gameoverWinner = document.getElementById('gameover-winner');
+const gameoverScores = document.getElementById('gameover-scores');
 
-let ably = null;
-let channel = null;
-let roomCode = '';
-let playerName = '';
+// ── State ───────────────────────────────────────────────────────────────
+const state = {
+  ably: null,
+  channel: null,
+  roomCode: '',
+  playerName: '',
+  isHost: false,
+  isClueGiver: false,
+  axisLabels: { x: 'Scary', y: 'Dangerous' },
+  target: null,           // {x, y} (only stored if clue giver)
+  pin: { x: 0.5, y: 0.5 },
+  phaseEndsAt: 0,
+  timerHandle: null,
+};
+
 let confirmTimer = null;
 let confirmed = false;
+
+// ── Screen helpers ──────────────────────────────────────────────────────
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove('active'));
+  screens[name].classList.add('active');
+  // resize all visible canvases on screen change
+  requestAnimationFrame(resizeAllCanvases);
+}
 
 function setStatus(text, kind) {
   statusEl.textContent = text;
   statusEl.className = 'status' + (kind ? ' ' + kind : '');
 }
 
-function setPlayStatus(text, kind) {
-  playStatusEl.textContent = text;
-  playStatusEl.className = 'status' + (kind ? ' ' + kind : '');
+function describeError(err) {
+  if (!err) return 'unknown';
+  if (err.reason && err.reason.message) return err.reason.message;
+  if (err.message) return err.message;
+  if (typeof err === 'string') return err;
+  try { return JSON.stringify(err); } catch (_) { return String(err); }
 }
 
+// ── Canvas drawing ──────────────────────────────────────────────────────
+function resizeCanvas(canvas) {
+  if (!canvas.offsetParent) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  if (canvas.width !== w * dpr) {
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+  }
+}
+
+function resizeAllCanvases() {
+  [clueCanvas, watchCanvas, guessCanvas].forEach(resizeCanvas);
+  drawClueCanvas();
+  drawWatchCanvas();
+  drawGuessCanvas();
+}
+
+window.addEventListener('resize', resizeAllCanvases);
+
+function drawAxes(ctx, w, h) {
+  ctx.fillStyle = '#0c0c1a';
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = '#3a3a55';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2);
+  ctx.moveTo(w / 2, 0); ctx.lineTo(w / 2, h);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#5c5c8a';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(1.5, 1.5, w - 3, h - 3);
+
+  ctx.fillStyle = '#dadaff';
+  const fs = Math.max(11, Math.round(w / 26));
+  ctx.font = `${fs}px sans-serif`;
+  ctx.textBaseline = 'middle';
+
+  ctx.textAlign = 'center';
+  ctx.fillText('More ' + state.axisLabels.y, w / 2, fs);
+  ctx.fillText('Less ' + state.axisLabels.y, w / 2, h - fs);
+
+  ctx.textAlign = 'left';
+  ctx.fillText('Less ' + state.axisLabels.x, 8, h / 2 - fs * 0.9);
+  ctx.textAlign = 'right';
+  ctx.fillText('More ' + state.axisLabels.x, w - 8, h / 2 - fs * 0.9);
+}
+
+function drawTarget(ctx, w, h, t) {
+  const tx = t.x * w, ty = (1 - t.y) * h;
+  ctx.fillStyle = 'rgba(255,80,80,0.22)';
+  ctx.beginPath(); ctx.arc(tx, ty, 28, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,80,80,0.55)';
+  ctx.beginPath(); ctx.arc(tx, ty, 18, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#ff5050';
+  ctx.beginPath(); ctx.arc(tx, ty, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(tx - 22, ty); ctx.lineTo(tx + 22, ty);
+  ctx.moveTo(tx, ty - 22); ctx.lineTo(tx, ty + 22);
+  ctx.stroke();
+}
+
+function drawPin(ctx, w, h, pin) {
+  const px = pin.x * w, py = (1 - pin.y) * h;
+  ctx.fillStyle = '#4cd2a0';
+  ctx.beginPath(); ctx.arc(px, py, 16, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+function drawClueCanvas() {
+  if (!clueCanvas.offsetParent) return;
+  const ctx = clueCanvas.getContext('2d');
+  const w = clueCanvas.width, h = clueCanvas.height;
+  drawAxes(ctx, w, h);
+  if (state.target) drawTarget(ctx, w, h, state.target);
+}
+
+function drawWatchCanvas() {
+  if (!watchCanvas.offsetParent) return;
+  const ctx = watchCanvas.getContext('2d');
+  const w = watchCanvas.width, h = watchCanvas.height;
+  drawAxes(ctx, w, h);
+  if (state.target) drawTarget(ctx, w, h, state.target);
+}
+
+function drawGuessCanvas() {
+  if (!guessCanvas.offsetParent) return;
+  const ctx = guessCanvas.getContext('2d');
+  const w = guessCanvas.width, h = guessCanvas.height;
+  drawAxes(ctx, w, h);
+  drawPin(ctx, w, h, state.pin);
+}
+
+// ── Drag handling on guess canvas ──────────────────────────────────────
+let dragging = false;
+function pointerToCoord(e) {
+  const rect = guessCanvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  let x = (t.clientX - rect.left) / rect.width;
+  let y = 1 - (t.clientY - rect.top) / rect.height;
+  return {
+    x: Math.max(0, Math.min(1, x)),
+    y: Math.max(0, Math.min(1, y)),
+  };
+}
+
+function onPointer(e) {
+  e.preventDefault();
+  const p = pointerToCoord(e);
+  state.pin = p;
+  drawGuessCanvas();
+  queueGuessUpdate();
+}
+
+guessCanvas.addEventListener('touchstart', e => { dragging = true; onPointer(e); }, { passive: false });
+guessCanvas.addEventListener('touchmove',  e => { if (dragging) onPointer(e); }, { passive: false });
+guessCanvas.addEventListener('touchend',   () => { dragging = false; flushGuess(); });
+guessCanvas.addEventListener('mousedown',  e => { dragging = true; onPointer(e); });
+guessCanvas.addEventListener('mousemove',  e => { if (dragging) onPointer(e); });
+window.addEventListener('mouseup', () => { if (dragging) { dragging = false; flushGuess(); } });
+
+// ── Throttled guess sender ─────────────────────────────────────────────
+let lastSentAt = 0;
+let pending = false;
+function queueGuessUpdate() {
+  pending = true;
+  const now = performance.now();
+  if (now - lastSentAt >= 120) flushGuess();
+}
+function flushGuess() {
+  if (!pending || !state.channel) return;
+  pending = false;
+  lastSentAt = performance.now();
+  state.channel.publish('msg', JSON.stringify({
+    type: 'guess_update',
+    name: state.playerName,
+    guess: state.pin,
+  }));
+}
+setInterval(() => {
+  if (pending && performance.now() - lastSentAt >= 120) flushGuess();
+}, 80);
+
+// ── Timer ───────────────────────────────────────────────────────────────
+function startPhaseTimer(durationSec) {
+  state.phaseEndsAt = performance.now() + durationSec * 1000;
+  if (state.timerHandle) cancelAnimationFrame(state.timerHandle);
+  const tick = () => {
+    const remainMs = state.phaseEndsAt - performance.now();
+    const s = Math.max(0, Math.ceil(remainMs / 1000));
+    [clueTimer, watchTimer, guessTimer].forEach(el => {
+      el.textContent = s;
+      el.classList.toggle('urgent', s <= 5);
+    });
+    if (remainMs > 0) state.timerHandle = requestAnimationFrame(tick);
+  };
+  tick();
+}
+
+// ── Message handling ───────────────────────────────────────────────────
 function handleMessage(msg) {
   let data;
   try {
     data = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data;
-  } catch (e) {
-    return;
-  }
+  } catch (e) { return; }
   if (!data || typeof data !== 'object') return;
 
-  if (data.type === 'room_confirmed' && data.for === playerName) {
-    confirmed = true;
-    if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
-    playerNameSpan.textContent = playerName;
-    roomDisplay.textContent = roomCode;
-    joinScreen.classList.remove('active');
-    playScreen.classList.add('active');
+  switch (data.type) {
+    case 'room_confirmed':
+      if (data.for !== state.playerName) return;
+      confirmed = true;
+      if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
+      state.isHost = !!data.is_host;
+      if (data.axis_labels) state.axisLabels = data.axis_labels;
+      lobbyName.textContent = state.playerName;
+      lobbyRoom.textContent = state.roomCode;
+      startBtn.style.display = state.isHost ? 'block' : 'none';
+      lobbyMsg.textContent = state.isHost
+        ? "You're the host. Tap when everyone's joined."
+        : "Waiting for the host to start the game...";
+      showScreen('lobby');
+      break;
+
+    case 'round_start':
+      state.axisLabels = data.axis_labels || state.axisLabels;
+      state.isClueGiver = data.clue_giver === state.playerName;
+      if (state.isClueGiver && data.target) {
+        state.target = data.target;
+      } else {
+        state.target = null;
+      }
+      state.pin = { x: 0.5, y: 0.5 };
+      const hint = `X: ${state.axisLabels.x}   Y: ${state.axisLabels.y}`;
+      clueAxisHint.textContent = hint;
+      guessAxisHint.textContent = hint;
+      guessClueGiver.textContent = `${data.clue_giver} is giving the clue…`;
+      if (state.isClueGiver) {
+        clueGivenBtn.disabled = false;
+        showScreen('clue');
+      } else {
+        // wait — guess phase will switch us in
+        showScreen('lobby');
+        lobbyMsg.textContent = `${data.clue_giver} is thinking of a clue...`;
+        startBtn.style.display = 'none';
+      }
+      startPhaseTimer(data.duration || 20);
+      break;
+
+    case 'guess_phase_start':
+      if (state.isClueGiver) {
+        showScreen('watch');
+      } else {
+        showScreen('guess');
+      }
+      startPhaseTimer(data.duration || 20);
+      // send initial guess so TV has a pin
+      if (!state.isClueGiver) {
+        state.channel.publish('msg', JSON.stringify({
+          type: 'guess_update',
+          name: state.playerName,
+          guess: state.pin,
+        }));
+      }
+      break;
+
+    case 'round_results':
+      if (state.timerHandle) cancelAnimationFrame(state.timerHandle);
+      const mine = (data.round_scores || {})[state.playerName] || 0;
+      resultsPoints.textContent = '+' + mine;
+      if (state.isClueGiver) {
+        resultsHeadline.textContent = "You were the clue giver";
+        resultsDetail.textContent = `points (sum of everyone's guesses)`;
+      } else {
+        resultsHeadline.textContent = "Round results";
+        resultsDetail.textContent = mine === 3 ? "BULLSEYE!" : mine === 2 ? "Close!" : mine === 1 ? "Right quadrant" : "Better luck next round";
+      }
+      resultsScores.innerHTML = renderScores(data.totals || {});
+      showScreen('results');
+      break;
+
+    case 'game_over':
+      if (state.timerHandle) cancelAnimationFrame(state.timerHandle);
+      const totals = data.totals || {};
+      const ranked = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+      gameoverWinner.innerHTML = ranked.length
+        ? `<span class="crown">★</span> ${ranked[0][0]} wins with ${ranked[0][1]} pts`
+        : '';
+      gameoverScores.innerHTML = renderScores(totals);
+      showScreen('gameover');
+      break;
   }
 }
 
+function renderScores(totals) {
+  const ranked = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  return ranked.map(([n, p]) =>
+    `<div class="row"><span class="${n === state.playerName ? 'label-strong' : ''}">${n}</span><span>${p} pts</span></div>`
+  ).join('');
+}
+
+// ── Buttons ────────────────────────────────────────────────────────────
 joinBtn.addEventListener('click', async () => {
   const code = roomInput.value.trim().toUpperCase();
   const name = nameInput.value.trim();
@@ -191,33 +572,31 @@ joinBtn.addEventListener('click', async () => {
 
   joinBtn.disabled = true;
   setStatus('Connecting...');
-  roomCode = code;
-  playerName = name;
+  state.roomCode = code;
+  state.playerName = name;
 
   try {
-    if (ably && ['failed', 'closed', 'suspended'].includes(ably.connection.state)) {
-      try { ably.close(); } catch (_) {}
-      ably = null;
+    if (state.ably && ['failed', 'closed', 'suspended'].includes(state.ably.connection.state)) {
+      try { state.ably.close(); } catch (_) {}
+      state.ably = null;
     }
-    if (!ably) {
-      ably = new Ably.Realtime(ABLY_KEY);
-    }
+    if (!state.ably) state.ably = new Ably.Realtime(ABLY_KEY);
     await new Promise((resolve, reject) => {
-      if (ably.connection.state === 'connected') return resolve();
-      const onConnected = () => { cleanup(); resolve(); };
-      const onFailed = (stateChange) => { cleanup(); reject(stateChange); };
+      if (state.ably.connection.state === 'connected') return resolve();
+      const onC = () => { cleanup(); resolve(); };
+      const onF = (sc) => { cleanup(); reject(sc); };
       const cleanup = () => {
-        ably.connection.off('connected', onConnected);
-        ably.connection.off('failed', onFailed);
+        state.ably.connection.off('connected', onC);
+        state.ably.connection.off('failed', onF);
       };
-      ably.connection.once('connected', onConnected);
-      ably.connection.once('failed', onFailed);
+      state.ably.connection.once('connected', onC);
+      state.ably.connection.once('failed', onF);
     });
 
-    channel = ably.channels.get('game-' + roomCode);
-    channel.subscribe('msg', handleMessage);
+    state.channel = state.ably.channels.get('game-' + state.roomCode);
+    state.channel.subscribe('msg', handleMessage);
 
-    setStatus('Joining room ' + roomCode + '...');
+    setStatus('Joining room ' + state.roomCode + '...');
     confirmed = false;
     confirmTimer = setTimeout(() => {
       if (!confirmed) {
@@ -226,9 +605,9 @@ joinBtn.addEventListener('click', async () => {
       }
     }, 5000);
 
-    await channel.publish('msg', JSON.stringify({
+    await state.channel.publish('msg', JSON.stringify({
       type: 'player_joined',
-      name: playerName
+      name: state.playerName,
     }));
   } catch (err) {
     setStatus('Error: ' + describeError(err), 'error');
@@ -236,26 +615,23 @@ joinBtn.addEventListener('click', async () => {
   }
 });
 
-function describeError(err) {
-  if (!err) return 'unknown';
-  if (err.reason && err.reason.message) return err.reason.message;
-  if (err.message) return err.message;
-  if (typeof err === 'string') return err;
-  try { return JSON.stringify(err); } catch (_) { return String(err); }
-}
+startBtn.addEventListener('click', () => {
+  if (!state.channel) return;
+  state.channel.publish('msg', JSON.stringify({
+    type: 'start_game',
+    name: state.playerName,
+  }));
+  startBtn.disabled = true;
+  lobbyMsg.textContent = 'Starting…';
+});
 
-buzzBtn.addEventListener('click', async () => {
-  if (!channel) return;
-  try {
-    await channel.publish('msg', JSON.stringify({
-      type: 'buzz_in',
-      name: playerName
-    }));
-    setPlayStatus('Buzzed!', 'success');
-    setTimeout(() => setPlayStatus(''), 1500);
-  } catch (err) {
-    setPlayStatus('Failed to send buzz', 'error');
-  }
+clueGivenBtn.addEventListener('click', () => {
+  if (!state.channel) return;
+  state.channel.publish('msg', JSON.stringify({
+    type: 'clue_given',
+    name: state.playerName,
+  }));
+  clueGivenBtn.disabled = true;
 });
 </script>
 </body>
