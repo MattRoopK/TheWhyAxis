@@ -128,7 +128,7 @@
 </div>
 
 <script>
-const ABLY_KEY = "YOUR_ABLY_API_KEY";
+const ABLY_KEY = "I9x_TQ.XW3Uyw:gMx6lM_kYxHcVb6Wq_EQBy1f4UYxZB3J5Ip46oswjSM";
 
 const joinScreen = document.getElementById('join-screen');
 const playScreen = document.getElementById('play-screen');
@@ -195,13 +195,23 @@ joinBtn.addEventListener('click', async () => {
   playerName = name;
 
   try {
+    if (ably && ['failed', 'closed', 'suspended'].includes(ably.connection.state)) {
+      try { ably.close(); } catch (_) {}
+      ably = null;
+    }
     if (!ably) {
       ably = new Ably.Realtime(ABLY_KEY);
     }
     await new Promise((resolve, reject) => {
       if (ably.connection.state === 'connected') return resolve();
-      ably.connection.once('connected', resolve);
-      ably.connection.once('failed', reject);
+      const onConnected = () => { cleanup(); resolve(); };
+      const onFailed = (stateChange) => { cleanup(); reject(stateChange); };
+      const cleanup = () => {
+        ably.connection.off('connected', onConnected);
+        ably.connection.off('failed', onFailed);
+      };
+      ably.connection.once('connected', onConnected);
+      ably.connection.once('failed', onFailed);
     });
 
     channel = ably.channels.get('game-' + roomCode);
@@ -221,10 +231,18 @@ joinBtn.addEventListener('click', async () => {
       name: playerName
     }));
   } catch (err) {
-    setStatus('Error: ' + (err && err.message ? err.message : err), 'error');
+    setStatus('Error: ' + describeError(err), 'error');
     joinBtn.disabled = false;
   }
 });
+
+function describeError(err) {
+  if (!err) return 'unknown';
+  if (err.reason && err.reason.message) return err.reason.message;
+  if (err.message) return err.message;
+  if (typeof err === 'string') return err;
+  try { return JSON.stringify(err); } catch (_) { return String(err); }
+}
 
 buzzBtn.addEventListener('click', async () => {
   if (!channel) return;
