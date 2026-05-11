@@ -12,10 +12,10 @@ const X_LABEL := "Scary"
 const Y_LABEL := "Dangerous"
 
 # Scoring rings, sized as fractions of a quadrant's diameter (quadrant = 0.5 in
-# normalized [0,1] space, so its diameter is 0.5). Radius = diameter * fraction / 2.
-const RING_BULLSEYE_RADIUS := 0.5 * 0.10 * 0.5  # 10% of a quadrant
-const RING_MIDDLE_RADIUS   := 0.5 * 0.30 * 0.5  # 30% of a quadrant
-const RING_OUTER_RADIUS    := 0.5 * 0.80 * 0.5  # 80% of a quadrant
+#
+@export var RING_BULLSEYE_RADIUS := .025  # 10% of a quadrant
+@export var RING_MIDDLE_RADIUS   := .075  # 30% of a quadrant
+@export var RING_OUTER_RADIUS    := .2  # 80% of a quadrant
 
 const PLAYER_COLORS: Array[Color] = [
 	Color("#e63946"), Color("#f4a261"), Color("#e9c46a"), Color("#52b788"),

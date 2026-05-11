@@ -1,10 +1,10 @@
-[gd_scene load_steps=4 format=3 uid="uid://b8wha1mainsc"]
+[gd_scene format=3 uid="uid://b8wha1mainsc"]
 
-[ext_resource type="Script" path="res://main.gd" id="1_main"]
-[ext_resource type="Script" path="res://chart.gd" id="2_chart"]
+[ext_resource type="Script" uid="uid://begavadin6am6" path="res://main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://brwbosi6y27x8" path="res://chart.gd" id="2_chart"]
 [ext_resource type="Texture2D" uid="uid://d0lkfx3vcxhe1" path="res://QR Code/adobe-express-qr-code.png" id="3_qr"]
 
-[node name="Main" type="Control"]
+[node name="Main" type="Control" unique_id=674933875]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,7 +13,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=704631792]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -22,7 +22,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.06, 0.07, 0.12, 1)
 
-[node name="LobbyPanel" type="Control" parent="."]
+[node name="LobbyPanel" type="Control" parent="." unique_id=735236959]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -31,23 +31,23 @@ offset_bottom = -240.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="LobbyPanel"]
+[node name="VBoxContainer" type="VBoxContainer" parent="LobbyPanel" unique_id=1421389050]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-alignment = 1
 theme_override_constants/separation = 36
+alignment = 1
 
-[node name="TitleLabel" type="Label" parent="LobbyPanel/VBoxContainer"]
+[node name="TitleLabel" type="Label" parent="LobbyPanel/VBoxContainer" unique_id=623424986]
 layout_mode = 2
 theme_override_font_sizes/font_size = 120
 text = "THE WHY AXIS"
 horizontal_alignment = 1
 
-[node name="PlayersLabel" type="Label" parent="LobbyPanel/VBoxContainer"]
+[node name="PlayersLabel" type="Label" parent="LobbyPanel/VBoxContainer" unique_id=1875337031]
 custom_minimum_size = Vector2(1200, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 44
@@ -55,13 +55,13 @@ text = "Waiting for players..."
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="StatusLabel" type="Label" parent="LobbyPanel/VBoxContainer"]
+[node name="StatusLabel" type="Label" parent="LobbyPanel/VBoxContainer" unique_id=1830924654]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 text = "Connecting..."
 horizontal_alignment = 1
 
-[node name="GamePanel" type="Control" parent="."]
+[node name="GamePanel" type="Control" parent="." unique_id=991227759]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -71,7 +71,7 @@ offset_bottom = -240.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="HeaderLabel" type="Label" parent="GamePanel"]
+[node name="HeaderLabel" type="Label" parent="GamePanel" unique_id=895495275]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -84,7 +84,7 @@ theme_override_font_sizes/font_size = 48
 text = "Round 1"
 vertical_alignment = 1
 
-[node name="TimerLabel" type="Label" parent="GamePanel"]
+[node name="TimerLabel" type="Label" parent="GamePanel" unique_id=1171202654]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
@@ -99,7 +99,7 @@ text = "120"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="Chart" type="Control" parent="GamePanel"]
+[node name="Chart" type="Control" parent="GamePanel" unique_id=1811051269]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -112,7 +112,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_chart")
 
-[node name="ScoresLabel" type="Label" parent="GamePanel"]
+[node name="ScoresLabel" type="Label" parent="GamePanel" unique_id=1848481538]
 custom_minimum_size = Vector2(1200, 0)
 layout_mode = 1
 anchors_preset = 12
@@ -126,12 +126,11 @@ offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_font_sizes/font_size = 36
-text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 
-[node name="GameOverLabel" type="Label" parent="GamePanel"]
+[node name="GameOverLabel" type="Label" parent="GamePanel" unique_id=1988141102]
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -150,7 +149,7 @@ text = "GAME OVER"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Footer" type="HBoxContainer" parent="."]
+[node name="Footer" type="HBoxContainer" parent="." unique_id=224529668]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -165,34 +164,31 @@ grow_vertical = 0
 theme_override_constants/separation = 32
 alignment = 1
 
-[node name="QRCode" type="TextureRect" parent="Footer"]
+[node name="QRCode" type="TextureRect" parent="Footer" unique_id=651960940]
 custom_minimum_size = Vector2(200, 200)
 layout_mode = 2
 texture = ExtResource("3_qr")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Footer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Footer" unique_id=1083310724]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
-alignment = 1
 theme_override_constants/separation = 8
+alignment = 1
 
-[node name="JoinPrompt" type="Label" parent="Footer/VBoxContainer"]
+[node name="JoinPrompt" type="Label" parent="Footer/VBoxContainer" unique_id=1494980375]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "Scan or visit"
-horizontal_alignment = 0
 
-[node name="UrlLabel" type="Label" parent="Footer/VBoxContainer"]
+[node name="UrlLabel" type="Label" parent="Footer/VBoxContainer" unique_id=1547657460]
 layout_mode = 2
 theme_override_font_sizes/font_size = 40
 text = "mattroopk.github.io/TheWhyAxis"
-horizontal_alignment = 0
 
-[node name="RoomCodeLabel" type="Label" parent="Footer/VBoxContainer"]
+[node name="RoomCodeLabel" type="Label" parent="Footer/VBoxContainer" unique_id=731447511]
 layout_mode = 2
 theme_override_font_sizes/font_size = 84
 text = "Room Code: ----"
-horizontal_alignment = 0
