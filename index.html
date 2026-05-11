@@ -258,6 +258,26 @@ const resultsScores = document.getElementById('results-scores');
 const gameoverWinner = document.getElementById('gameover-winner');
 const gameoverScores = document.getElementById('gameover-scores');
 
+const STORAGE_KEY = 'twa-session';
+function loadSavedSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') return null;
+    if (typeof obj.room !== 'string' || typeof obj.name !== 'string') return null;
+    return obj;
+  } catch (_) { return null; }
+}
+function saveSession(room, name) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ room, name })); } catch (_) {}
+}
+const savedSession = loadSavedSession();
+if (savedSession) {
+  roomInput.value = savedSession.room;
+  nameInput.value = savedSession.name;
+}
+
 // ── State ───────────────────────────────────────────────────────────────
 const state = {
   ably: null,
@@ -569,6 +589,73 @@ function handleMessage(msg) {
       gameoverScores.innerHTML = renderScores(totals);
       showScreen('gameover');
       break;
+
+    case 'rejoin_state':
+      if (data.for !== state.playerName) return;
+      confirmed = true;
+      if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
+      state.isHost = !!data.is_host;
+      if (data.axis_labels) state.axisLabels = toAxisLabels(data.axis_labels);
+      state.isClueGiver = data.clue_giver === state.playerName;
+      state.target = (state.isClueGiver && data.target) ? data.target : null;
+      state.pin = data.pin || { x: 0.5, y: 0.5 };
+      state.lockedIn = !!data.locked_in;
+      lobbyName.textContent = state.playerName;
+      lobbyRoom.textContent = state.roomCode;
+      const rjHint = `X: ${state.axisLabels.xNeg.toUpperCase()} ↔ ${state.axisLabels.xPos.toUpperCase()}   Y: ${state.axisLabels.yNeg.toUpperCase()} ↔ ${state.axisLabels.yPos.toUpperCase()}`;
+      clueAxisHint.textContent = rjHint;
+      guessAxisHint.textContent = rjHint;
+      guessClueGiver.textContent = `${data.clue_giver} is giving the clue…`;
+      finalAnswerBtn.disabled = state.lockedIn;
+      finalAnswerBtn.textContent = state.lockedIn ? 'LOCKED IN — waiting…' : 'FINAL ANSWER';
+      clueGivenBtn.disabled = true;
+      if (typeof data.phase_remaining === 'number' && data.phase_remaining > 0) {
+        startPhaseTimer(data.phase_remaining);
+      }
+      switch (data.phase) {
+        case 'clue':
+          if (state.isClueGiver) {
+            clueGivenBtn.disabled = false;
+            showScreen('clue');
+          } else {
+            showScreen('lobby');
+            lobbyMsg.textContent = `${data.clue_giver} is thinking of a clue...`;
+            startBtn.style.display = 'none';
+          }
+          break;
+        case 'guess':
+          if (state.isClueGiver) {
+            showScreen('watch');
+          } else {
+            showScreen('guess');
+            drawGuessCanvas();
+          }
+          break;
+        case 'results':
+          resultsHeadline.textContent = 'Round in progress';
+          resultsPoints.textContent = '';
+          resultsDetail.textContent = 'Waiting for next round…';
+          resultsScores.innerHTML = renderScores(data.totals || {});
+          showScreen('results');
+          break;
+        case 'game_over': {
+          const rjTotals = data.totals || {};
+          const rjRanked = Object.entries(rjTotals).sort((a, b) => b[1] - a[1]);
+          gameoverWinner.innerHTML = rjRanked.length
+            ? `<span class="crown">★</span> ${rjRanked[0][0]} wins with ${rjRanked[0][1]} pts`
+            : '';
+          gameoverScores.innerHTML = renderScores(rjTotals);
+          showScreen('gameover');
+          break;
+        }
+        default:
+          showScreen('lobby');
+          lobbyMsg.textContent = state.isHost
+            ? "You're the host. Tap when everyone's joined."
+            : "Waiting for the host to start the game...";
+          startBtn.style.display = state.isHost ? 'block' : 'none';
+      }
+      break;
   }
 }
 
@@ -596,6 +683,7 @@ joinBtn.addEventListener('click', async () => {
   setStatus('Connecting...');
   state.roomCode = code;
   state.playerName = name;
+  saveSession(code, name);
 
   try {
     if (state.ably && ['failed', 'closed', 'suspended'].includes(state.ably.connection.state)) {
@@ -617,6 +705,14 @@ joinBtn.addEventListener('click', async () => {
 
     state.channel = state.ably.channels.get('game-' + state.roomCode);
     state.channel.subscribe('msg', handleMessage);
+    state.ably.connection.on('connected', () => {
+      if (state.playerName && state.channel) {
+        state.channel.publish('msg', JSON.stringify({
+          type: 'player_joined',
+          name: state.playerName,
+        }));
+      }
+    });
 
     setStatus('Joining room ' + state.roomCode + '...');
     confirmed = false;

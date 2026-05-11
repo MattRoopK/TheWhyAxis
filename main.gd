@@ -199,17 +199,20 @@ func _on_ably_message(payload: Dictionary) -> void:
 # ── Lobby ──────────────────────────────────────────────────────────────────
 
 func _handle_player_joined(payload: Dictionary) -> void:
-	if state != GameState.LOBBY:
-		return
 	var n: String = str(payload.get("name", "")).strip_edges()
 	if n.is_empty():
 		return
-	if not players.has(n):
+	var is_rejoin := players.has(n)
+	if not is_rejoin:
+		# Brand-new player names can only be added during the lobby.
+		if state != GameState.LOBBY:
+			return
 		players.append(n)
 		scores[n] = 0
 		player_colors[n] = PLAYER_COLORS[(players.size() - 1) % PLAYER_COLORS.size()]
 		chart.pin_colors = player_colors
-	_refresh_lobby_display()
+	if state == GameState.LOBBY:
+		_refresh_lobby_display()
 	ably.publish(channel_name, {
 		"type": "room_confirmed",
 		"room": room_code,
@@ -217,6 +220,36 @@ func _handle_player_joined(payload: Dictionary) -> void:
 		"is_host": players.size() > 0 and players[0] == n,
 		"axis_labels": _axis_labels_payload(),
 	})
+	if state != GameState.LOBBY:
+		ably.publish(channel_name, _rejoin_state_payload(n))
+
+
+func _rejoin_state_payload(n: String) -> Dictionary:
+	var phase := "lobby"
+	match state:
+		GameState.ROUND_CLUE: phase = "clue"
+		GameState.ROUND_GUESS: phase = "guess"
+		GameState.ROUND_RESULTS: phase = "results"
+		GameState.GAME_OVER: phase = "game_over"
+	var data := {
+		"type": "rejoin_state",
+		"for": n,
+		"is_host": players.size() > 0 and players[0] == n,
+		"axis_labels": _axis_labels_payload(),
+		"phase": phase,
+		"round_index": round_index,
+		"total_rounds": total_rounds,
+		"clue_giver": clue_giver,
+		"phase_remaining": phase_timer,
+		"totals": scores,
+		"locked_in": bool(locked_in.get(n, false)),
+	}
+	if n == clue_giver and (state == GameState.ROUND_CLUE or state == GameState.ROUND_GUESS):
+		data["target"] = {"x": current_target.x, "y": current_target.y}
+	if guesses.has(n):
+		var g: Vector2 = guesses[n]
+		data["pin"] = {"x": g.x, "y": g.y}
+	return data
 
 
 func _refresh_lobby_display() -> void:
