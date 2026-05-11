@@ -19,9 +19,9 @@ var y_neg_label := "Safe"
 
 # Scoring rings, sized as fractions of a quadrant's diameter (quadrant = 0.5 in
 #
-@export var RING_BULLSEYE_RADIUS := .025  # 10% of a quadrant
-@export var RING_MIDDLE_RADIUS   := .075  # 30% of a quadrant
-@export var RING_OUTER_RADIUS    := .2  # 80% of a quadrant
+@export var RING_BULLSEYE_RADIUS := .012  # 10% of a quadrant
+@export var RING_MIDDLE_RADIUS   := .05  # 30% of a quadrant
+@export var RING_OUTER_RADIUS    := .1  # 80% of a quadrant
 
 const PLAYER_COLORS: Array[Color] = [
 	Color("#e63946"), Color("#f4a261"), Color("#e9c46a"), Color("#52b788"),
@@ -38,6 +38,7 @@ const PLAYER_COLORS: Array[Color] = [
 @onready var scores_label: Label = $GamePanel/ScoresLabel
 @onready var game_over_label: Label = $GamePanel/GameOverLabel
 @onready var chart: Control = $GamePanel/Chart
+@onready var fullscreen_btn: Button = $FullscreenButton
 
 var ably: Node
 var room_code := ""
@@ -68,6 +69,10 @@ func _ready() -> void:
 	_pick_random_labels()
 	chart.set_axes(x_pos_label, x_neg_label, y_pos_label, y_neg_label)
 
+	fullscreen_btn.pressed.connect(_enter_fullscreen)
+	get_window().size_changed.connect(_update_fullscreen_btn_visibility)
+	_update_fullscreen_btn_visibility()
+
 	ably = AblyClient.new()
 	ably.name = "Ably"
 	add_child(ably)
@@ -89,10 +94,21 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		var w := get_window()
 		if w.mode == Window.MODE_FULLSCREEN or w.mode == Window.MODE_EXCLUSIVE_FULLSCREEN:
-			w.mode = Window.MODE_WINDOWED
+			w.mode = Window.MODE_MAXIMIZED
 		else:
 			w.mode = Window.MODE_FULLSCREEN
+		_update_fullscreen_btn_visibility()
 		get_viewport().set_input_as_handled()
+
+
+func _enter_fullscreen() -> void:
+	get_window().mode = Window.MODE_FULLSCREEN
+	_update_fullscreen_btn_visibility()
+
+
+func _update_fullscreen_btn_visibility() -> void:
+	var m := get_window().mode
+	fullscreen_btn.visible = m != Window.MODE_FULLSCREEN and m != Window.MODE_EXCLUSIVE_FULLSCREEN
 
 
 func _load_label_rows() -> void:

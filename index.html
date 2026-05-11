@@ -347,13 +347,13 @@ function drawAxes(ctx, w, h) {
   ctx.textBaseline = 'middle';
 
   ctx.textAlign = 'center';
-  ctx.fillText(state.axisLabels.yPos, w / 2, fs);
-  ctx.fillText(state.axisLabels.yNeg, w / 2, h - fs);
+  ctx.fillText(state.axisLabels.yPos.toUpperCase(), w / 2, fs);
+  ctx.fillText(state.axisLabels.yNeg.toUpperCase(), w / 2, h - fs);
 
   ctx.textAlign = 'left';
-  ctx.fillText(state.axisLabels.xNeg, 8, h / 2 - fs * 0.9);
+  ctx.fillText(state.axisLabels.xNeg.toUpperCase(), 8, h / 2 - fs * 0.9);
   ctx.textAlign = 'right';
-  ctx.fillText(state.axisLabels.xPos, w - 8, h / 2 - fs * 0.9);
+  ctx.fillText(state.axisLabels.xPos.toUpperCase(), w - 8, h / 2 - fs * 0.9);
 }
 
 function drawTarget(ctx, w, h, t) {
@@ -508,7 +508,7 @@ function handleMessage(msg) {
       state.lockedIn = false;
       finalAnswerBtn.disabled = false;
       finalAnswerBtn.textContent = 'FINAL ANSWER';
-      const hint = `X: ${state.axisLabels.xNeg} ↔ ${state.axisLabels.xPos}   Y: ${state.axisLabels.yNeg} ↔ ${state.axisLabels.yPos}`;
+      const hint = `X: ${state.axisLabels.xNeg.toUpperCase()} ↔ ${state.axisLabels.xPos.toUpperCase()}   Y: ${state.axisLabels.yNeg.toUpperCase()} ↔ ${state.axisLabels.yPos.toUpperCase()}`;
       clueAxisHint.textContent = hint;
       guessAxisHint.textContent = hint;
       guessClueGiver.textContent = `${data.clue_giver} is giving the clue…`;

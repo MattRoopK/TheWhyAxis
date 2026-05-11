@@ -12,6 +12,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
+RING_BULLSEYE_RADIUS = 0.024
+RING_MIDDLE_RADIUS = 0.1
+RING_OUTER_RADIUS = 0.2
 
 [node name="Background" type="ColorRect" parent="." unique_id=704631792]
 layout_mode = 1
@@ -192,3 +195,19 @@ text = "mattroopk.github.io/TheWhyAxis"
 layout_mode = 2
 theme_override_font_sizes/font_size = 84
 text = "Room Code: ----"
+
+[node name="FullscreenButton" type="Button" parent="." unique_id=2074115001]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -64.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 48.0
+grow_horizontal = 0
+tooltip_text = "Fullscreen"
+focus_mode = 0
+theme_override_font_sizes/font_size = 22
+text = "⛶"

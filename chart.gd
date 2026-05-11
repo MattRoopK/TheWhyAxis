@@ -62,15 +62,20 @@ func _draw() -> void:
 	var fs := 28
 	var label_color := Color(0.92, 0.92, 1.0, 1.0)
 
-	var top_size := font.get_string_size(y_pos_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	draw_string(font, Vector2((size.x - top_size.x) * 0.5, fs + 4), y_pos_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+	var y_pos_text := y_pos_label.to_upper()
+	var y_neg_text := y_neg_label.to_upper()
+	var x_pos_text := x_pos_label.to_upper()
+	var x_neg_text := x_neg_label.to_upper()
 
-	var bot_size := font.get_string_size(y_neg_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	draw_string(font, Vector2((size.x - bot_size.x) * 0.5, size.y - 12), y_neg_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+	var top_size := font.get_string_size(y_pos_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	draw_string(font, Vector2((size.x - top_size.x) * 0.5, fs + 4), y_pos_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
 
-	draw_string(font, Vector2(14, cy - 8), x_neg_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
-	var right_size := font.get_string_size(x_pos_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	draw_string(font, Vector2(size.x - right_size.x - 14, cy - 8), x_pos_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+	var bot_size := font.get_string_size(y_neg_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	draw_string(font, Vector2((size.x - bot_size.x) * 0.5, size.y - 12), y_neg_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+
+	draw_string(font, Vector2(14, cy - 8), x_neg_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+	var right_size := font.get_string_size(x_pos_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	draw_string(font, Vector2(size.x - right_size.x - 14, cy - 8), x_pos_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
 
 	# Target reveal
 	if show_target:
