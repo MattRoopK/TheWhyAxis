@@ -1,0 +1,10 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Leftover nested folders (old clones / empty placeholder)
+/TheWhyAxis/
+/TheWhyAxis-Git/
+
+# Godot export credentials (may contain secrets)
+export_credentials.cfg
