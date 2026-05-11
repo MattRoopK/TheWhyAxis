@@ -91,6 +91,8 @@
   button:disabled { background: #555; cursor: not-allowed; }
   .danger { background: #e63946; }
   .danger:active { background: #ff6b78; }
+  .commit { background: #4cd2a0; color: #0c1a14; }
+  .commit:active { background: #7ee4b8; }
   .status {
     text-align: center;
     font-size: 16px;
@@ -192,11 +194,12 @@
 <div id="guess-screen" class="screen">
   <div class="row">
     <span class="pill">Drag your pin</span>
-    <div class="timer" id="guess-timer">20</div>
+    <div class="timer" id="guess-timer">120</div>
   </div>
   <h2 id="guess-clue-giver">…is giving you a clue</h2>
   <canvas id="guess-canvas"></canvas>
   <div class="small" id="guess-axis-hint"></div>
+  <button id="final-answer-btn" class="commit">FINAL ANSWER</button>
 </div>
 
 <div id="results-screen" class="screen center-screen">
@@ -241,6 +244,7 @@ const clueTimer = document.getElementById('clue-timer');
 const watchTimer = document.getElementById('watch-timer');
 const guessTimer = document.getElementById('guess-timer');
 const clueGivenBtn = document.getElementById('clue-given-btn');
+const finalAnswerBtn = document.getElementById('final-answer-btn');
 const clueAxisHint = document.getElementById('clue-axis-hint');
 const guessAxisHint = document.getElementById('guess-axis-hint');
 const guessClueGiver = document.getElementById('guess-clue-giver');
@@ -262,6 +266,7 @@ const state = {
   axisLabels: { x: 'Scary', y: 'Dangerous' },
   target: null,           // {x, y} (only stored if clue giver)
   pin: { x: 0.5, y: 0.5 },
+  lockedIn: false,
   phaseEndsAt: 0,
   timerHandle: null,
 };
@@ -405,6 +410,7 @@ function pointerToCoord(e) {
 
 function onPointer(e) {
   e.preventDefault();
+  if (state.lockedIn) return;
   const p = pointerToCoord(e);
   state.pin = p;
   drawGuessCanvas();
@@ -489,6 +495,9 @@ function handleMessage(msg) {
         state.target = null;
       }
       state.pin = { x: 0.5, y: 0.5 };
+      state.lockedIn = false;
+      finalAnswerBtn.disabled = false;
+      finalAnswerBtn.textContent = 'FINAL ANSWER';
       const hint = `X: ${state.axisLabels.x}   Y: ${state.axisLabels.y}`;
       clueAxisHint.textContent = hint;
       guessAxisHint.textContent = hint;
@@ -502,7 +511,7 @@ function handleMessage(msg) {
         lobbyMsg.textContent = `${data.clue_giver} is thinking of a clue...`;
         startBtn.style.display = 'none';
       }
-      startPhaseTimer(data.duration || 20);
+      startPhaseTimer(data.duration || 120);
       break;
 
     case 'guess_phase_start':
@@ -511,7 +520,7 @@ function handleMessage(msg) {
       } else {
         showScreen('guess');
       }
-      startPhaseTimer(data.duration || 20);
+      startPhaseTimer(data.duration || 120);
       // send initial guess so TV has a pin
       if (!state.isClueGiver) {
         state.channel.publish('msg', JSON.stringify({
@@ -531,7 +540,7 @@ function handleMessage(msg) {
         resultsDetail.textContent = `points (sum of everyone's guesses)`;
       } else {
         resultsHeadline.textContent = "Round results";
-        resultsDetail.textContent = mine === 3 ? "BULLSEYE!" : mine === 2 ? "Close!" : mine === 1 ? "Right quadrant" : "Better luck next round";
+        resultsDetail.textContent = mine === 3 ? "BULLSEYE!" : mine === 2 ? "Close!" : mine === 1 ? "Outer ring" : "Better luck next round";
       }
       resultsScores.innerHTML = renderScores(data.totals || {});
       showScreen('results');
@@ -632,6 +641,20 @@ clueGivenBtn.addEventListener('click', () => {
     name: state.playerName,
   }));
   clueGivenBtn.disabled = true;
+});
+
+finalAnswerBtn.addEventListener('click', () => {
+  if (!state.channel || state.lockedIn || state.isClueGiver) return;
+  state.lockedIn = true;
+  pending = true;
+  flushGuess();
+  state.channel.publish('msg', JSON.stringify({
+    type: 'final_answer',
+    name: state.playerName,
+    guess: state.pin,
+  }));
+  finalAnswerBtn.disabled = true;
+  finalAnswerBtn.textContent = 'LOCKED IN — waiting…';
 });
 </script>
 </body>
