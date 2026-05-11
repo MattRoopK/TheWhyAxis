@@ -1,7 +1,9 @@
 extends Control
 
-var x_label := "Scary"
-var y_label := "Dangerous"
+var x_pos_label := "Scary"
+var x_neg_label := "Not scary"
+var y_pos_label := "Dangerous"
+var y_neg_label := "Safe"
 var target := Vector2.ZERO
 var show_target := false
 var ring_radii: Array = []     # normalized radii (outer to inner) shown at reveal
@@ -14,9 +16,11 @@ func set_pins(d: Dictionary) -> void:
 	queue_redraw()
 
 
-func set_axes(x: String, y: String) -> void:
-	x_label = x
-	y_label = y
+func set_axes(x_pos: String, x_neg: String, y_pos: String, y_neg: String) -> void:
+	x_pos_label = x_pos
+	x_neg_label = x_neg
+	y_pos_label = y_pos
+	y_neg_label = y_neg
 	queue_redraw()
 
 
@@ -58,18 +62,15 @@ func _draw() -> void:
 	var fs := 28
 	var label_color := Color(0.92, 0.92, 1.0, 1.0)
 
-	var top_text := "More %s" % y_label
-	var top_size := font.get_string_size(top_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	draw_string(font, Vector2((size.x - top_size.x) * 0.5, fs + 4), top_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+	var top_size := font.get_string_size(y_pos_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	draw_string(font, Vector2((size.x - top_size.x) * 0.5, fs + 4), y_pos_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
 
-	var bot_text := "Less %s" % y_label
-	var bot_size := font.get_string_size(bot_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	draw_string(font, Vector2((size.x - bot_size.x) * 0.5, size.y - 12), bot_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+	var bot_size := font.get_string_size(y_neg_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	draw_string(font, Vector2((size.x - bot_size.x) * 0.5, size.y - 12), y_neg_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
 
-	draw_string(font, Vector2(14, cy - 8), "Less %s" % x_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
-	var right_text := "More %s" % x_label
-	var right_size := font.get_string_size(right_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
-	draw_string(font, Vector2(size.x - right_size.x - 14, cy - 8), right_text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+	draw_string(font, Vector2(14, cy - 8), x_neg_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
+	var right_size := font.get_string_size(x_pos_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+	draw_string(font, Vector2(size.x - right_size.x - 14, cy - 8), x_pos_label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, label_color)
 
 	# Target reveal
 	if show_target:

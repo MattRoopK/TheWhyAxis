@@ -263,7 +263,7 @@ const state = {
   playerName: '',
   isHost: false,
   isClueGiver: false,
-  axisLabels: { x: 'Scary', y: 'Dangerous' },
+  axisLabels: { xPos: 'Scary', xNeg: 'Not scary', yPos: 'Dangerous', yNeg: 'Safe' },
   target: null,           // {x, y} (only stored if clue giver)
   pin: { x: 0.5, y: 0.5 },
   lockedIn: false,
@@ -285,6 +285,16 @@ function showScreen(name) {
 function setStatus(text, kind) {
   statusEl.textContent = text;
   statusEl.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+function toAxisLabels(raw) {
+  if (!raw || typeof raw !== 'object') return state.axisLabels;
+  return {
+    xPos: raw.x_pos || raw.xPos || raw.x || state.axisLabels.xPos,
+    xNeg: raw.x_neg || raw.xNeg || state.axisLabels.xNeg,
+    yPos: raw.y_pos || raw.yPos || raw.y || state.axisLabels.yPos,
+    yNeg: raw.y_neg || raw.yNeg || state.axisLabels.yNeg,
+  };
 }
 
 function describeError(err) {
@@ -337,13 +347,13 @@ function drawAxes(ctx, w, h) {
   ctx.textBaseline = 'middle';
 
   ctx.textAlign = 'center';
-  ctx.fillText('More ' + state.axisLabels.y, w / 2, fs);
-  ctx.fillText('Less ' + state.axisLabels.y, w / 2, h - fs);
+  ctx.fillText(state.axisLabels.yPos, w / 2, fs);
+  ctx.fillText(state.axisLabels.yNeg, w / 2, h - fs);
 
   ctx.textAlign = 'left';
-  ctx.fillText('Less ' + state.axisLabels.x, 8, h / 2 - fs * 0.9);
+  ctx.fillText(state.axisLabels.xNeg, 8, h / 2 - fs * 0.9);
   ctx.textAlign = 'right';
-  ctx.fillText('More ' + state.axisLabels.x, w - 8, h / 2 - fs * 0.9);
+  ctx.fillText(state.axisLabels.xPos, w - 8, h / 2 - fs * 0.9);
 }
 
 function drawTarget(ctx, w, h, t) {
@@ -476,7 +486,7 @@ function handleMessage(msg) {
       confirmed = true;
       if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
       state.isHost = !!data.is_host;
-      if (data.axis_labels) state.axisLabels = data.axis_labels;
+      if (data.axis_labels) state.axisLabels = toAxisLabels(data.axis_labels);
       lobbyName.textContent = state.playerName;
       lobbyRoom.textContent = state.roomCode;
       startBtn.style.display = state.isHost ? 'block' : 'none';
@@ -487,7 +497,7 @@ function handleMessage(msg) {
       break;
 
     case 'round_start':
-      state.axisLabels = data.axis_labels || state.axisLabels;
+      state.axisLabels = data.axis_labels ? toAxisLabels(data.axis_labels) : state.axisLabels;
       state.isClueGiver = data.clue_giver === state.playerName;
       if (state.isClueGiver && data.target) {
         state.target = data.target;
@@ -498,7 +508,7 @@ function handleMessage(msg) {
       state.lockedIn = false;
       finalAnswerBtn.disabled = false;
       finalAnswerBtn.textContent = 'FINAL ANSWER';
-      const hint = `X: ${state.axisLabels.x}   Y: ${state.axisLabels.y}`;
+      const hint = `X: ${state.axisLabels.xNeg} ↔ ${state.axisLabels.xPos}   Y: ${state.axisLabels.yNeg} ↔ ${state.axisLabels.yPos}`;
       clueAxisHint.textContent = hint;
       guessAxisHint.textContent = hint;
       guessClueGiver.textContent = `${data.clue_giver} is giving the clue…`;

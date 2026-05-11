@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://p5q4bc740fn8"
+
+[deps]
+
+files=["res://Game_Lists/game_lists.Negative X.translation", "res://Game_Lists/game_lists.Positive Y.translation", "res://Game_Lists/game_lists.Negative Y.translation"]
+
+source_file="res://Game_Lists/game_lists.csv"
+dest_files=["res://Game_Lists/game_lists.Negative X.translation", "res://Game_Lists/game_lists.Positive Y.translation", "res://Game_Lists/game_lists.Negative Y.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

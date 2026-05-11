@@ -8,8 +8,14 @@ const CLUE_DURATION := 120.0
 const GUESS_DURATION := 120.0
 const RESULTS_DURATION := 6.0
 const ROUNDS_PER_PLAYER := 3
-const X_LABEL := "Scary"
-const Y_LABEL := "Dangerous"
+const LABELS_CSV_PATH := "res://Game_Lists/game_lists.csv"
+
+var label_rows: Array = []  # Array of [pos_x, neg_x, pos_y, neg_y]
+var _unused_label_indices: Array[int] = []  # shuffle bag — refills when empty
+var x_pos_label := "Scary"
+var x_neg_label := "Not scary"
+var y_pos_label := "Dangerous"
+var y_neg_label := "Safe"
 
 # Scoring rings, sized as fractions of a quadrant's diameter (quadrant = 0.5 in
 #
@@ -58,7 +64,9 @@ func _ready() -> void:
 	status_label.text = "Connecting to Ably..."
 	players_label.text = "Waiting for players..."
 
-	chart.set_axes(X_LABEL, Y_LABEL)
+	_load_label_rows()
+	_pick_random_labels()
+	chart.set_axes(x_pos_label, x_neg_label, y_pos_label, y_neg_label)
 
 	ably = AblyClient.new()
 	ably.name = "Ably"
@@ -85,6 +93,59 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			w.mode = Window.MODE_FULLSCREEN
 		get_viewport().set_input_as_handled()
+
+
+func _load_label_rows() -> void:
+	label_rows.clear()
+	var f := FileAccess.open(LABELS_CSV_PATH, FileAccess.READ)
+	if f == null:
+		push_warning("Could not open labels CSV at %s; falling back to defaults." % LABELS_CSV_PATH)
+		return
+	var is_header := true
+	while not f.eof_reached():
+		var row := f.get_csv_line()
+		if is_header:
+			is_header = false
+			continue
+		if row.size() < 4:
+			continue
+		var pos_x := row[0].strip_edges()
+		var neg_x := row[1].strip_edges()
+		var pos_y := row[2].strip_edges()
+		var neg_y := row[3].strip_edges()
+		if pos_x.is_empty() and neg_x.is_empty() and pos_y.is_empty() and neg_y.is_empty():
+			continue
+		label_rows.append([pos_x, neg_x, pos_y, neg_y])
+
+
+func _pick_random_labels() -> void:
+	if label_rows.is_empty():
+		return
+	if _unused_label_indices.is_empty():
+		_refill_label_bag()
+	var pick_idx := randi() % _unused_label_indices.size()
+	var row_idx := _unused_label_indices[pick_idx]
+	_unused_label_indices.remove_at(pick_idx)
+	var row: Array = label_rows[row_idx]
+	x_pos_label = row[0]
+	x_neg_label = row[1]
+	y_pos_label = row[2]
+	y_neg_label = row[3]
+
+
+func _refill_label_bag() -> void:
+	_unused_label_indices.clear()
+	for i in label_rows.size():
+		_unused_label_indices.append(i)
+
+
+func _axis_labels_payload() -> Dictionary:
+	return {
+		"x_pos": x_pos_label,
+		"x_neg": x_neg_label,
+		"y_pos": y_pos_label,
+		"y_neg": y_neg_label,
+	}
 
 
 func _generate_room_code() -> String:
@@ -138,7 +199,7 @@ func _handle_player_joined(payload: Dictionary) -> void:
 		"room": room_code,
 		"for": n,
 		"is_host": players.size() > 0 and players[0] == n,
-		"axis_labels": {"x": X_LABEL, "y": Y_LABEL},
+		"axis_labels": _axis_labels_payload(),
 	})
 
 
@@ -176,6 +237,8 @@ func _start_round() -> void:
 	current_target = Vector2(randf(), randf())
 	guesses.clear()
 	locked_in.clear()
+	_pick_random_labels()
+	chart.set_axes(x_pos_label, x_neg_label, y_pos_label, y_neg_label)
 	chart.clear_round()
 	chart.set_pins({})
 	state = GameState.ROUND_CLUE
@@ -188,7 +251,7 @@ func _start_round() -> void:
 		"total_rounds": total_rounds,
 		"clue_giver": clue_giver,
 		"target": {"x": current_target.x, "y": current_target.y},
-		"axis_labels": {"x": X_LABEL, "y": Y_LABEL},
+		"axis_labels": _axis_labels_payload(),
 		"duration": CLUE_DURATION,
 	})
 
