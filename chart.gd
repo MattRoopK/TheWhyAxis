@@ -9,6 +9,8 @@ var show_target := false
 var ring_radii: Array = []     # normalized radii (outer to inner) shown at reveal
 var pins: Dictionary = {}      # name -> Vector2 in [0,1]
 var pin_colors: Dictionary = {} # name -> Color
+var pin_scores: Dictionary = {} # name -> int (round points)
+var show_pin_scores := false
 
 
 func set_pins(d: Dictionary) -> void:
@@ -39,6 +41,14 @@ func hide_target() -> void:
 func clear_round() -> void:
 	pins.clear()
 	show_target = false
+	pin_scores.clear()
+	show_pin_scores = false
+	queue_redraw()
+
+
+func show_round_scores(d: Dictionary) -> void:
+	pin_scores = d.duplicate()
+	show_pin_scores = true
 	queue_redraw()
 
 
@@ -103,6 +113,21 @@ func _draw() -> void:
 		var label_pos := p + Vector2(18, 6)
 		draw_string(font, label_pos + Vector2(1, 1), n, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(0, 0, 0, 0.6))
 		draw_string(font, label_pos, n, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, col.lightened(0.4))
+
+	# Point popups above each pin
+	if show_pin_scores:
+		var pop_fs := 40
+		for n in pins:
+			if not pin_scores.has(n):
+				continue
+			var pts := int(pin_scores[n])
+			var text := "+%d" % pts
+			var pop_col: Color = Color(1.0, 0.95, 0.55, 1.0) if pts > 0 else Color(0.7, 0.72, 0.78, 1.0)
+			var p := _to_pixel(pins[n])
+			var sz := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, pop_fs)
+			var pop_pos := p + Vector2(-sz.x * 0.5, -24)
+			draw_string(font, pop_pos + Vector2(2, 2), text, HORIZONTAL_ALIGNMENT_LEFT, -1, pop_fs, Color(0, 0, 0, 0.75))
+			draw_string(font, pop_pos, text, HORIZONTAL_ALIGNMENT_LEFT, -1, pop_fs, pop_col)
 
 
 func _to_pixel(c: Vector2) -> Vector2:

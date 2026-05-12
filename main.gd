@@ -6,7 +6,9 @@ enum GameState { LOBBY, ROUND_CLUE, ROUND_GUESS, ROUND_RESULTS, GAME_OVER }
 
 const CLUE_DURATION := 120.0
 const GUESS_DURATION := 120.0
-const RESULTS_DURATION := 3.0
+const REVEAL_DURATION := 2.5
+const SCORES_DURATION := 3.5
+const NEXT_TURN_DURATION := 2.5
 const ROUNDS_PER_PLAYER := 3
 const LABELS_CSV_PATH := "res://Game_Lists/game_lists.csv"
 
@@ -84,7 +86,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if state == GameState.ROUND_CLUE or state == GameState.ROUND_GUESS or state == GameState.ROUND_RESULTS:
+	if state == GameState.ROUND_CLUE or state == GameState.ROUND_GUESS:
 		phase_timer = max(0.0, phase_timer - delta)
 		timer_label.text = "%d" % int(ceil(phase_timer))
 		if phase_timer <= 0.0:
@@ -371,31 +373,63 @@ func _handle_final_answer(payload: Dictionary) -> void:
 
 func _start_results_phase() -> void:
 	state = GameState.ROUND_RESULTS
+	var results_round := round_index
 	var round_scores := _calculate_round_scores()
 	var clue_giver_pts := 0
 	for n in round_scores:
 		clue_giver_pts += int(round_scores[n])
 	round_scores[clue_giver] = clue_giver_pts
+
+	timer_label.visible = false
+	header_label.visible = false
+	next_turn_label.visible = false
+	chart.visible = true
+
+	# Sub-phase 1: bullseye reveal (no point popups yet)
+	chart.reveal_target(current_target, [RING_OUTER_RADIUS, RING_MIDDLE_RADIUS, RING_BULLSEYE_RADIUS])
+	ably.publish(channel_name, {
+		"type": "round_reveal",
+		"target": {"x": current_target.x, "y": current_target.y},
+		"clue_giver": clue_giver,
+	})
+	await get_tree().create_timer(REVEAL_DURATION).timeout
+	if state != GameState.ROUND_RESULTS or round_index != results_round:
+		return
+
+	# Sub-phase 2: point popups above each pin; totals update.
 	for n in round_scores:
 		scores[n] = int(scores.get(n, 0)) + int(round_scores[n])
+	chart.show_round_scores(round_scores)
 	_refresh_scores_display()
 	ably.publish(channel_name, {
-		"type": "round_results",
+		"type": "round_scores",
 		"target": {"x": current_target.x, "y": current_target.y},
 		"clue_giver": clue_giver,
 		"round_scores": round_scores,
 		"totals": scores,
 	})
+	await get_tree().create_timer(SCORES_DURATION).timeout
+	if state != GameState.ROUND_RESULTS or round_index != results_round:
+		return
+
+	# Sub-phase 3: next player's turn (or game over if it was the last round).
 	if round_index >= total_rounds:
 		_end_game()
 		return
-	phase_timer = RESULTS_DURATION
+	chart.visible = false
 	var next_player: String = players[round_index % players.size()]
 	next_turn_label.text = "%s'S TURN" % next_player.to_upper()
 	next_turn_label.visible = true
-	chart.visible = false
-	header_label.visible = false
-	timer_label.visible = false
+	ably.publish(channel_name, {
+		"type": "next_turn",
+		"next_player": next_player,
+		"round_index": round_index + 1,
+		"total_rounds": total_rounds,
+	})
+	await get_tree().create_timer(NEXT_TURN_DURATION).timeout
+	if state != GameState.ROUND_RESULTS or round_index != results_round:
+		return
+	_start_round()
 
 
 func _calculate_round_scores() -> Dictionary:
@@ -425,11 +459,6 @@ func _advance_phase() -> void:
 			_start_guess_phase()
 		GameState.ROUND_GUESS:
 			_start_results_phase()
-		GameState.ROUND_RESULTS:
-			if round_index >= total_rounds:
-				_end_game()
-			else:
-				_start_round()
 
 
 func _end_game() -> void:
