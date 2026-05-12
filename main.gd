@@ -6,7 +6,7 @@ enum GameState { LOBBY, ROUND_CLUE, ROUND_GUESS, ROUND_RESULTS, GAME_OVER }
 
 const CLUE_DURATION := 120.0
 const GUESS_DURATION := 120.0
-const RESULTS_DURATION := 6.0
+const RESULTS_DURATION := 3.0
 const ROUNDS_PER_PLAYER := 3
 const LABELS_CSV_PATH := "res://Game_Lists/game_lists.csv"
 
@@ -35,7 +35,8 @@ const PLAYER_COLORS: Array[Color] = [
 @onready var status_label: Label = $LobbyPanel/VBoxContainer/StatusLabel
 @onready var header_label: Label = $GamePanel/HeaderLabel
 @onready var timer_label: Label = $GamePanel/TimerLabel
-@onready var scores_label: Label = $GamePanel/ScoresLabel
+@onready var scores_label: RichTextLabel = $GamePanel/ScoresLabel
+@onready var next_turn_label: Label = $GamePanel/NextTurnLabel
 @onready var game_over_label: Label = $GamePanel/GameOverLabel
 @onready var chart: Control = $GamePanel/Chart
 @onready var fullscreen_btn: Button = $FullscreenButton
@@ -290,6 +291,10 @@ func _start_round() -> void:
 	chart.set_axes(x_pos_label, x_neg_label, y_pos_label, y_neg_label)
 	chart.clear_round()
 	chart.set_pins({})
+	next_turn_label.visible = false
+	chart.visible = true
+	header_label.visible = true
+	timer_label.visible = true
 	state = GameState.ROUND_CLUE
 	phase_timer = CLUE_DURATION
 	header_label.text = "Round %d / %d — %s is the clue giver (thinking...)" % [round_index, total_rounds, clue_giver]
@@ -366,7 +371,6 @@ func _handle_final_answer(payload: Dictionary) -> void:
 
 func _start_results_phase() -> void:
 	state = GameState.ROUND_RESULTS
-	phase_timer = RESULTS_DURATION
 	var round_scores := _calculate_round_scores()
 	var clue_giver_pts := 0
 	for n in round_scores:
@@ -374,8 +378,6 @@ func _start_results_phase() -> void:
 	round_scores[clue_giver] = clue_giver_pts
 	for n in round_scores:
 		scores[n] = int(scores.get(n, 0)) + int(round_scores[n])
-	chart.reveal_target(current_target, [RING_OUTER_RADIUS, RING_MIDDLE_RADIUS, RING_BULLSEYE_RADIUS])
-	header_label.text = "Round %d results — clue giver %s earned %d" % [round_index, clue_giver, clue_giver_pts]
 	_refresh_scores_display()
 	ably.publish(channel_name, {
 		"type": "round_results",
@@ -384,6 +386,16 @@ func _start_results_phase() -> void:
 		"round_scores": round_scores,
 		"totals": scores,
 	})
+	if round_index >= total_rounds:
+		_end_game()
+		return
+	phase_timer = RESULTS_DURATION
+	var next_player: String = players[round_index % players.size()]
+	next_turn_label.text = "%s'S TURN" % next_player.to_upper()
+	next_turn_label.visible = true
+	chart.visible = false
+	header_label.visible = false
+	timer_label.visible = false
 
 
 func _calculate_round_scores() -> Dictionary:
@@ -423,7 +435,10 @@ func _advance_phase() -> void:
 func _end_game() -> void:
 	state = GameState.GAME_OVER
 	timer_label.text = ""
+	timer_label.visible = true
+	header_label.visible = true
 	chart.visible = false
+	next_turn_label.visible = false
 	game_over_label.visible = true
 	var ranked := _ranked_scores()
 	var winner_text := "GAME OVER"
@@ -453,5 +468,6 @@ func _refresh_scores_display() -> void:
 		return
 	var parts: Array[String] = []
 	for n in players:
-		parts.append("%s: %d" % [n, int(scores.get(n, 0))])
-	scores_label.text = "    ".join(PackedStringArray(parts))
+		var c: Color = player_colors.get(n, Color.WHITE)
+		parts.append("[color=#%s]%s[/color]  [b]%d[/b]" % [c.to_html(false), n, int(scores.get(n, 0))])
+	scores_label.text = "[center]" + "      ".join(PackedStringArray(parts)) + "[/center]"

@@ -115,7 +115,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_chart")
 
-[node name="ScoresLabel" type="Label" parent="GamePanel" unique_id=1848481538]
+[node name="ScoresLabel" type="RichTextLabel" parent="GamePanel" unique_id=1848481538]
 custom_minimum_size = Vector2(1200, 0)
 layout_mode = 1
 anchors_preset = 12
@@ -128,7 +128,27 @@ offset_right = -24.0
 offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 36
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+theme_override_font_sizes/normal_font_size = 36
+
+[node name="NextTurnLabel" type="Label" parent="GamePanel" unique_id=1612893050]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -700.0
+offset_top = -150.0
+offset_right = 700.0
+offset_bottom = 150.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 140
+text = "TURN"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
