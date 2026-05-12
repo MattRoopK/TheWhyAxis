@@ -40,6 +40,9 @@ const PLAYER_COLORS: Array[Color] = [
 @onready var scores_label: RichTextLabel = $GamePanel/ScoresLabel
 @onready var next_turn_label: Label = $GamePanel/NextTurnLabel
 @onready var game_over_label: Label = $GamePanel/GameOverLabel
+@onready var game_over_buttons: Control = $GamePanel/GameOverButtons
+@onready var play_again_btn: Button = $GamePanel/GameOverButtons/PlayAgainButton
+@onready var play_again_same_btn: Button = $GamePanel/GameOverButtons/PlayAgainSameButton
 @onready var chart: Control = $GamePanel/Chart
 @onready var fullscreen_btn: Button = $FullscreenButton
 
@@ -75,6 +78,9 @@ func _ready() -> void:
 	fullscreen_btn.pressed.connect(_enter_fullscreen)
 	get_window().size_changed.connect(_update_fullscreen_btn_visibility)
 	_update_fullscreen_btn_visibility()
+
+	play_again_btn.pressed.connect(_on_play_again_pressed)
+	play_again_same_btn.pressed.connect(_on_play_again_same_pressed)
 
 	ably = AblyClient.new()
 	ably.name = "Ably"
@@ -297,6 +303,8 @@ func _start_round() -> void:
 	chart.visible = true
 	header_label.visible = true
 	timer_label.visible = true
+	game_over_label.visible = false
+	game_over_buttons.visible = false
 	state = GameState.ROUND_CLUE
 	phase_timer = CLUE_DURATION
 	header_label.text = "Round %d / %d — %s is the clue giver (thinking...)" % [round_index, total_rounds, clue_giver]
@@ -469,6 +477,8 @@ func _end_game() -> void:
 	chart.visible = false
 	next_turn_label.visible = false
 	game_over_label.visible = true
+	game_over_buttons.visible = true
+	play_again_same_btn.disabled = players.is_empty()
 	var ranked := _ranked_scores()
 	var winner_text := "GAME OVER"
 	if ranked.size() > 0:
@@ -500,3 +510,54 @@ func _refresh_scores_display() -> void:
 		var c: Color = player_colors.get(n, Color.WHITE)
 		parts.append("[color=#%s]%s[/color]  [b]%d[/b]" % [c.to_html(false), n, int(scores.get(n, 0))])
 	scores_label.text = "[center]" + "      ".join(PackedStringArray(parts)) + "[/center]"
+
+
+func _on_play_again_pressed() -> void:
+	# Full reset — back to lobby; players must rejoin.
+	state = GameState.LOBBY
+	players.clear()
+	scores.clear()
+	player_colors.clear()
+	chart.pin_colors = player_colors
+	chart.set_pins({})
+	chart.clear_round()
+	guesses.clear()
+	locked_in.clear()
+	round_index = 0
+	total_rounds = 0
+	clue_giver = ""
+	phase_timer = 0.0
+	game_over_label.visible = false
+	game_over_buttons.visible = false
+	next_turn_label.visible = false
+	chart.visible = false
+	header_label.visible = false
+	timer_label.visible = false
+	timer_label.text = ""
+	game_panel.visible = false
+	lobby_panel.visible = true
+	_refresh_lobby_display()
+	ably.publish(channel_name, {
+		"type": "game_reset",
+		"room": room_code,
+	})
+
+
+func _on_play_again_same_pressed() -> void:
+	if players.is_empty():
+		return
+	# Keep players + colors; reset scores and start a new game.
+	for n in players:
+		scores[n] = 0
+	guesses.clear()
+	locked_in.clear()
+	round_index = 0
+	total_rounds = players.size() * ROUNDS_PER_PLAYER
+	game_over_label.visible = false
+	game_over_buttons.visible = false
+	ably.publish(channel_name, {
+		"type": "game_restart",
+		"total_rounds": total_rounds,
+		"totals": scores,
+	})
+	_start_round()

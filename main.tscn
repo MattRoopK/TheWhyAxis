@@ -162,15 +162,44 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -500.0
-offset_top = -120.0
+offset_top = -180.0
 offset_right = 500.0
-offset_bottom = 120.0
+offset_bottom = 60.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 96
 text = "GAME OVER"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="GameOverButtons" type="HBoxContainer" parent="GamePanel" unique_id=1492837561]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -560.0
+offset_top = 100.0
+offset_right = 560.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 48
+alignment = 1
+
+[node name="PlayAgainButton" type="Button" parent="GamePanel/GameOverButtons" unique_id=1612443229]
+custom_minimum_size = Vector2(500, 110)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Play Again"
+
+[node name="PlayAgainSameButton" type="Button" parent="GamePanel/GameOverButtons" unique_id=1612443230]
+custom_minimum_size = Vector2(500, 110)
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Play Again — Same Players"
 
 [node name="Footer" type="HBoxContainer" parent="." unique_id=224529668]
 layout_mode = 1
