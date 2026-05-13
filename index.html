@@ -96,6 +96,23 @@
   .danger:active { background: #ff6b78; }
   .commit { background: #4cd2a0; color: #0c1a14; }
   .commit:active { background: #7ee4b8; }
+  .lifeline { background: #b46cff; }
+  .lifeline:active { background: #c98fff; }
+  .lifelines-row {
+    display: flex;
+    gap: 10px;
+  }
+  .lifelines-row button {
+    flex: 1;
+    padding: 14px 8px;
+    font-size: 16px;
+  }
+  .moving-hint {
+    text-align: center;
+    color: #ffd166;
+    font-size: 14px;
+    min-height: 18px;
+  }
   .status {
     text-align: center;
     font-size: 16px;
@@ -178,9 +195,18 @@
     <span class="pill">You're the clue giver</span>
     <div class="timer" id="clue-timer">20</div>
   </div>
-  <h2>Give a verbal clue for this point:</h2>
+  <h2 id="clue-heading">Give a verbal clue for this point:</h2>
   <canvas id="clue-canvas"></canvas>
   <div class="small" id="clue-axis-hint"></div>
+  <div class="moving-hint" id="clue-moving-hint"></div>
+  <div class="lifelines-row" id="clue-lifelines-row">
+    <button id="move-bullseye-btn" class="lifeline">MOVE BULLSEYE</button>
+    <button id="new-categories-btn" class="lifeline">NEW CATEGORIES</button>
+  </div>
+  <div class="row" id="move-confirm-row" style="display:none;">
+    <button id="cancel-move-btn" class="danger">CANCEL</button>
+    <button id="confirm-move-btn" class="commit">CONFIRM MOVE</button>
+  </div>
   <button id="clue-given-btn" class="danger">CLUE GIVEN</button>
 </div>
 
@@ -248,6 +274,14 @@ const watchTimer = document.getElementById('watch-timer');
 const guessTimer = document.getElementById('guess-timer');
 const clueGivenBtn = document.getElementById('clue-given-btn');
 const finalAnswerBtn = document.getElementById('final-answer-btn');
+const moveBullseyeBtn = document.getElementById('move-bullseye-btn');
+const newCategoriesBtn = document.getElementById('new-categories-btn');
+const confirmMoveBtn = document.getElementById('confirm-move-btn');
+const cancelMoveBtn = document.getElementById('cancel-move-btn');
+const clueLifelinesRow = document.getElementById('clue-lifelines-row');
+const moveConfirmRow = document.getElementById('move-confirm-row');
+const clueMovingHint = document.getElementById('clue-moving-hint');
+const clueHeading = document.getElementById('clue-heading');
 const clueAxisHint = document.getElementById('clue-axis-hint');
 const guessAxisHint = document.getElementById('guess-axis-hint');
 const guessClueGiver = document.getElementById('guess-clue-giver');
@@ -292,6 +326,9 @@ const state = {
   lockedIn: false,
   phaseEndsAt: 0,
   timerHandle: null,
+  lifelines: { moveUsed: false, newAxesUsed: false },
+  movingBullseye: false,
+  preMoveTarget: null,
 };
 
 let confirmTimer = null;
@@ -428,6 +465,61 @@ function drawGuessCanvas() {
   drawPin(ctx, w, h, state.pin);
 }
 
+// ── Clue-screen lifeline + move-mode UI ────────────────────────────────
+function refreshClueLifelineUI() {
+  if (state.movingBullseye) {
+    clueHeading.textContent = 'Drag the bullseye to a new spot:';
+    clueLifelinesRow.style.display = 'none';
+    moveConfirmRow.style.display = 'flex';
+    clueGivenBtn.style.display = 'none';
+    clueMovingHint.textContent = 'Confirm uses your Move Bullseye lifeline.';
+  } else {
+    clueHeading.textContent = 'Give a verbal clue for this point:';
+    clueLifelinesRow.style.display = 'flex';
+    moveConfirmRow.style.display = 'none';
+    clueGivenBtn.style.display = 'block';
+    clueMovingHint.textContent = '';
+    moveBullseyeBtn.disabled = state.lifelines.moveUsed;
+    newCategoriesBtn.disabled = state.lifelines.newAxesUsed;
+    moveBullseyeBtn.textContent = state.lifelines.moveUsed ? 'MOVE BULLSEYE (USED)' : 'MOVE BULLSEYE';
+    newCategoriesBtn.textContent = state.lifelines.newAxesUsed ? 'NEW CATEGORIES (USED)' : 'NEW CATEGORIES';
+  }
+}
+
+function exitMoveMode(restore) {
+  if (restore && state.preMoveTarget) state.target = state.preMoveTarget;
+  state.preMoveTarget = null;
+  state.movingBullseye = false;
+  refreshClueLifelineUI();
+  drawClueCanvas();
+}
+
+// ── Drag handling on clue canvas (move-bullseye mode) ──────────────────
+function clueCanvasPointerToCoord(e) {
+  const rect = clueCanvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  const x = (t.clientX - rect.left) / rect.width;
+  const y = 1 - (t.clientY - rect.top) / rect.height;
+  return {
+    x: Math.max(0, Math.min(1, x)),
+    y: Math.max(0, Math.min(1, y)),
+  };
+}
+
+let clueDragging = false;
+function onClueDrag(e) {
+  if (!state.movingBullseye) return;
+  e.preventDefault();
+  state.target = clueCanvasPointerToCoord(e);
+  drawClueCanvas();
+}
+clueCanvas.addEventListener('touchstart', e => { if (state.movingBullseye) { clueDragging = true; onClueDrag(e); } }, { passive: false });
+clueCanvas.addEventListener('touchmove',  e => { if (clueDragging) onClueDrag(e); }, { passive: false });
+clueCanvas.addEventListener('touchend',   () => { clueDragging = false; });
+clueCanvas.addEventListener('mousedown',  e => { if (state.movingBullseye) { clueDragging = true; onClueDrag(e); } });
+clueCanvas.addEventListener('mousemove',  e => { if (clueDragging) onClueDrag(e); });
+window.addEventListener('mouseup', () => { clueDragging = false; });
+
 // ── Drag handling on guess canvas ──────────────────────────────────────
 let dragging = false;
 function pointerToCoord(e) {
@@ -529,6 +621,12 @@ function handleMessage(msg) {
       }
       state.pin = { x: 0.5, y: 0.5 };
       state.lockedIn = false;
+      state.movingBullseye = false;
+      state.preMoveTarget = null;
+      if (state.isClueGiver && data.clue_giver_lifelines) {
+        state.lifelines.moveUsed = !!data.clue_giver_lifelines.move_used;
+        state.lifelines.newAxesUsed = !!data.clue_giver_lifelines.new_axes_used;
+      }
       finalAnswerBtn.disabled = false;
       finalAnswerBtn.textContent = 'FINAL ANSWER';
       const hint = `X: ${state.axisLabels.xNeg.toUpperCase()} ↔ ${state.axisLabels.xPos.toUpperCase()}   Y: ${state.axisLabels.yNeg.toUpperCase()} ↔ ${state.axisLabels.yPos.toUpperCase()}`;
@@ -537,6 +635,7 @@ function handleMessage(msg) {
       guessClueGiver.textContent = `${data.clue_giver} is giving the clue…`;
       if (state.isClueGiver) {
         clueGivenBtn.disabled = false;
+        refreshClueLifelineUI();
         showScreen('clue');
       } else {
         // wait — guess phase will switch us in
@@ -545,6 +644,17 @@ function handleMessage(msg) {
         startBtn.style.display = 'none';
       }
       startPhaseTimer(data.duration || 120);
+      break;
+
+    case 'axes_updated':
+      state.axisLabels = data.axis_labels ? toAxisLabels(data.axis_labels) : state.axisLabels;
+      if (state.isClueGiver && data.target) state.target = data.target;
+      const auHint = `X: ${state.axisLabels.xNeg.toUpperCase()} ↔ ${state.axisLabels.xPos.toUpperCase()}   Y: ${state.axisLabels.yNeg.toUpperCase()} ↔ ${state.axisLabels.yPos.toUpperCase()}`;
+      clueAxisHint.textContent = auHint;
+      guessAxisHint.textContent = auHint;
+      drawClueCanvas();
+      drawWatchCanvas();
+      drawGuessCanvas();
       break;
 
     case 'guess_phase_start':
@@ -600,6 +710,12 @@ function handleMessage(msg) {
       state.target = (state.isClueGiver && data.target) ? data.target : null;
       state.pin = data.pin || { x: 0.5, y: 0.5 };
       state.lockedIn = !!data.locked_in;
+      state.movingBullseye = false;
+      state.preMoveTarget = null;
+      if (data.lifelines) {
+        state.lifelines.moveUsed = !!data.lifelines.move_used;
+        state.lifelines.newAxesUsed = !!data.lifelines.new_axes_used;
+      }
       lobbyName.textContent = state.playerName;
       lobbyRoom.textContent = state.roomCode;
       const rjHint = `X: ${state.axisLabels.xNeg.toUpperCase()} ↔ ${state.axisLabels.xPos.toUpperCase()}   Y: ${state.axisLabels.yNeg.toUpperCase()} ↔ ${state.axisLabels.yPos.toUpperCase()}`;
@@ -616,6 +732,7 @@ function handleMessage(msg) {
         case 'clue':
           if (state.isClueGiver) {
             clueGivenBtn.disabled = false;
+            refreshClueLifelineUI();
             showScreen('clue');
           } else {
             showScreen('lobby');
@@ -750,6 +867,42 @@ clueGivenBtn.addEventListener('click', () => {
     name: state.playerName,
   }));
   clueGivenBtn.disabled = true;
+});
+
+moveBullseyeBtn.addEventListener('click', () => {
+  if (!state.isClueGiver || state.lifelines.moveUsed || state.movingBullseye) return;
+  state.preMoveTarget = state.target ? { x: state.target.x, y: state.target.y } : null;
+  state.movingBullseye = true;
+  refreshClueLifelineUI();
+  drawClueCanvas();
+});
+
+cancelMoveBtn.addEventListener('click', () => exitMoveMode(true));
+
+confirmMoveBtn.addEventListener('click', () => {
+  if (!state.channel || !state.isClueGiver || !state.movingBullseye || !state.target) return;
+  state.channel.publish('msg', JSON.stringify({
+    type: 'lifeline_move',
+    name: state.playerName,
+    target: state.target,
+  }));
+  state.lifelines.moveUsed = true;
+  state.movingBullseye = false;
+  state.preMoveTarget = null;
+  refreshClueLifelineUI();
+  drawClueCanvas();
+});
+
+newCategoriesBtn.addEventListener('click', () => {
+  if (!state.channel || !state.isClueGiver || state.lifelines.newAxesUsed) return;
+  if (state.movingBullseye) exitMoveMode(true);
+  state.lifelines.newAxesUsed = true;
+  newCategoriesBtn.disabled = true;
+  refreshClueLifelineUI();
+  state.channel.publish('msg', JSON.stringify({
+    type: 'lifeline_new_axes',
+    name: state.playerName,
+  }));
 });
 
 finalAnswerBtn.addEventListener('click', () => {

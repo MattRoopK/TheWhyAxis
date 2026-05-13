@@ -61,6 +61,9 @@ var current_target := Vector2(0.5, 0.5)
 var guesses: Dictionary = {}
 var locked_in: Dictionary = {}
 var phase_timer := 0.0
+# Per-player, per-game lifeline usage: name -> {"move": bool, "new_axes": bool}.
+# Each player gets one of each per game; usable only by the clue giver during the clue phase.
+var lifelines: Dictionary = {}
 
 
 func _ready() -> void:
@@ -164,6 +167,19 @@ func _refill_label_bag() -> void:
 		_unused_label_indices.append(i)
 
 
+func _reset_lifelines() -> void:
+	for n in players:
+		lifelines[n] = {"move": false, "new_axes": false}
+
+
+func _lifelines_payload(n: String) -> Dictionary:
+	var l: Dictionary = lifelines.get(n, {})
+	return {
+		"move_used": bool(l.get("move", false)),
+		"new_axes_used": bool(l.get("new_axes", false)),
+	}
+
+
 func _axis_labels_payload() -> Dictionary:
 	return {
 		"x_pos": x_pos_label,
@@ -203,6 +219,10 @@ func _on_ably_message(payload: Dictionary) -> void:
 			_handle_guess_update(payload)
 		"final_answer":
 			_handle_final_answer(payload)
+		"lifeline_move":
+			_handle_lifeline_move(payload)
+		"lifeline_new_axes":
+			_handle_lifeline_new_axes(payload)
 
 
 # ── Lobby ──────────────────────────────────────────────────────────────────
@@ -218,6 +238,7 @@ func _handle_player_joined(payload: Dictionary) -> void:
 			return
 		players.append(n)
 		scores[n] = 0
+		lifelines[n] = {"move": false, "new_axes": false}
 		player_colors[n] = PLAYER_COLORS[(players.size() - 1) % PLAYER_COLORS.size()]
 		chart.pin_colors = player_colors
 	if state == GameState.LOBBY:
@@ -252,6 +273,7 @@ func _rejoin_state_payload(n: String) -> Dictionary:
 		"phase_remaining": phase_timer,
 		"totals": scores,
 		"locked_in": bool(locked_in.get(n, false)),
+		"lifelines": _lifelines_payload(n),
 	}
 	if n == clue_giver and (state == GameState.ROUND_CLUE or state == GameState.ROUND_GUESS):
 		data["target"] = {"x": current_target.x, "y": current_target.y}
@@ -280,6 +302,7 @@ func _handle_start_game(payload: Dictionary) -> void:
 		return
 	total_rounds = players.size() * ROUNDS_PER_PLAYER
 	round_index = 0
+	_reset_lifelines()
 	lobby_panel.visible = false
 	game_panel.visible = true
 	game_over_label.visible = false
@@ -317,6 +340,7 @@ func _start_round() -> void:
 		"target": {"x": current_target.x, "y": current_target.y},
 		"axis_labels": _axis_labels_payload(),
 		"duration": CLUE_DURATION,
+		"clue_giver_lifelines": _lifelines_payload(clue_giver),
 	})
 
 
@@ -326,6 +350,47 @@ func _handle_clue_given(payload: Dictionary) -> void:
 	if str(payload.get("name", "")) != clue_giver:
 		return
 	_start_guess_phase()
+
+
+func _handle_lifeline_move(payload: Dictionary) -> void:
+	if state != GameState.ROUND_CLUE:
+		return
+	var n: String = str(payload.get("name", ""))
+	if n != clue_giver:
+		return
+	var l: Dictionary = lifelines.get(n, {})
+	if bool(l.get("move", false)):
+		return
+	var t: Dictionary = payload.get("target", {})
+	current_target = Vector2(
+		clampf(float(t.get("x", 0.5)), 0.0, 1.0),
+		clampf(float(t.get("y", 0.5)), 0.0, 1.0)
+	)
+	l["move"] = true
+	lifelines[n] = l
+
+
+func _handle_lifeline_new_axes(payload: Dictionary) -> void:
+	if state != GameState.ROUND_CLUE:
+		return
+	var n: String = str(payload.get("name", ""))
+	if n != clue_giver:
+		return
+	var l: Dictionary = lifelines.get(n, {})
+	if bool(l.get("new_axes", false)):
+		return
+	_pick_random_labels()
+	chart.set_axes(x_pos_label, x_neg_label, y_pos_label, y_neg_label)
+	current_target = Vector2(randf(), randf())
+	l["new_axes"] = true
+	lifelines[n] = l
+	header_label.text = "Round %d / %d — %s is the clue giver (new categories!)" % [round_index, total_rounds, clue_giver]
+	ably.publish(channel_name, {
+		"type": "axes_updated",
+		"axis_labels": _axis_labels_payload(),
+		"target": {"x": current_target.x, "y": current_target.y},
+		"clue_giver": clue_giver,
+	})
 
 
 func _start_guess_phase() -> void:
@@ -517,6 +582,7 @@ func _on_play_again_pressed() -> void:
 	state = GameState.LOBBY
 	players.clear()
 	scores.clear()
+	lifelines.clear()
 	player_colors.clear()
 	chart.pin_colors = player_colors
 	chart.set_pins({})
@@ -549,6 +615,7 @@ func _on_play_again_same_pressed() -> void:
 	# Keep players + colors; reset scores and start a new game.
 	for n in players:
 		scores[n] = 0
+	_reset_lifelines()
 	guesses.clear()
 	locked_in.clear()
 	round_index = 0
