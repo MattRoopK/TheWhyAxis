@@ -20,7 +20,7 @@ actually good,actually sucks,loved by fans,hated by fans
 kid-friendly,adults only,traumatic,positive memory
 kind,heartless,brave,cowardly
 lawful,chaotic,good,evil
-legal,probably illegal,good act,evil act
+is legal,is illegal,should be legal,should be illegal
 looks like a dinosaur,doesn't look like a dinosaur,is a dinosaur,is not a dinosaur
 pet,pest,good,evil
 respectable,embarrassing,rich people shit,poor people shit
@@ -37,7 +37,7 @@ would improve your life,would ruin your life,sexy,nasty
 you're being nice,you're just an asshole,is true,is not true
 data-driven,vibes-based,convincing,suspicious
 production ready,first draft,encouraging,terrifying 
-reply-all,for your eyes only,HR violation,everyday occurrence
+secret,they hit reply all,HR violation,mundane occurrence
 unbiased,political,funny,unfunny
 easy to explain,impossible to explain,good for humanity,bad for humanity
 stupid,smart,friendly,mean
@@ -51,3 +51,8 @@ tastes good,tastes bad,smells good,smells bad
 healthy,unhealthy,tasty,bland
 considered a hero,considered a monster,was a hero,was a monster
 should be famous,should be obscure,famous,obscure
+good fighter,terrible fighter,good lover,terrible lover
+western culture,Asian culture,example for the world,needs to change
+historical hero,historical villain,is in heaven ,is in hell
+simple rules,complex rules,great game,boring slog
+positive,toxic,big fanbase,small fanbase
