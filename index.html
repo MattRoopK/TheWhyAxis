@@ -56,8 +56,21 @@
     align-items: stretch;
     gap: 12px;
     flex: 1;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 24px;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
   }
+  .screen::-webkit-scrollbar { width: 8px; }
+  .screen::-webkit-scrollbar-track { background: transparent; }
+  .screen::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.35);
+    border-radius: 4px;
+  }
+  .screen::-webkit-scrollbar-thumb:active { background: rgba(255, 255, 255, 0.55); }
   .screen.active { display: flex; }
   .center-screen { justify-content: center; align-items: stretch; }
   input {

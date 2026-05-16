@@ -131,6 +131,7 @@ grow_vertical = 0
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
+theme_override_font_sizes/bold_font_size = 36
 theme_override_font_sizes/normal_font_size = 36
 
 [node name="NextTurnLabel" type="Label" parent="GamePanel" unique_id=1612893050]
